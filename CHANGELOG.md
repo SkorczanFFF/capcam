@@ -22,4 +22,5 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Phone app: mounting is now picked from three full-width tiles with a side-view drawing and a plain-words description: lying flat (on the cap brim, screen up), standing portrait and standing landscape (on the brim, forehead or helmet, screen facing the monitor). Each has a "turned 180°" switch. Any other position is under "Custom position". Facings are now named by where the screen points (up / forward / towards the forehead).
+- README: setup guide (phone app, opentrack, wearing the phone, session order and calibration, per-game notes, troubleshooting, packet formats).
 - README: the project now covers several games (phone app as the single source, opentrack for games with TrackIR support, own mod for BeamNG.drive).
