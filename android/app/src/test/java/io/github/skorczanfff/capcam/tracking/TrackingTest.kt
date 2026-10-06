@@ -7,9 +7,9 @@ class TrackingTest {
 
     private fun rad(deg: Double) = Math.toRadians(deg)
 
-    /** Head pose built in the documented order: yaw, then pitch, then roll. */
+    /** Head pose built in the documented order: yaw (+ = right, so −z rotation), then pitch, then roll. */
     private fun head(yaw: Double, pitch: Double, roll: Double) =
-        Quat.aboutZ(rad(yaw)) * Quat.aboutX(rad(pitch)) * Quat.aboutY(rad(roll))
+        Quat.aboutZ(rad(-yaw)) * Quat.aboutX(rad(pitch)) * Quat.aboutY(rad(roll))
 
     private fun inverse(q: Quat) = Quat(-q.x, -q.y, -q.z, q.w)
 
@@ -43,13 +43,13 @@ class TrackingTest {
     }
 
     @Test
-    fun rightHandSigns() {
-        // Turning left moves the forward axis (+y) towards -x.
-        val left = head(90.0, 0.0, 0.0)
-        assertAngles(HeadAngles(90.0, 0.0, 0.0), left.toHeadAngles())
-        // Looking up moves the forward axis (+y) towards +z.
-        val up = Quat.aboutX(rad(10.0))
-        assertEquals(10.0, up.toHeadAngles().pitch, 1e-6)
+    fun signsMatchOpentrack() {
+        // Turning left is a positive rotation about up (forward +y swings towards -x): yaw must be negative.
+        assertEquals(-30.0, Quat.aboutZ(rad(30.0)).toHeadAngles().yaw, 1e-6)
+        // Looking up moves the forward axis (+y) towards +z: pitch positive.
+        assertEquals(10.0, Quat.aboutX(rad(10.0)).toHeadAngles().pitch, 1e-6)
+        // Right ear down: up axis (+z) swings towards +x, a positive rotation about forward (+y).
+        assertEquals(15.0, Quat.aboutY(rad(15.0)).toHeadAngles().roll, 1e-6)
     }
 
     @Test
@@ -63,31 +63,31 @@ class TrackingTest {
     @Test
     fun landscapeTopLeftLyingStillLooksStraightAhead() {
         // Phone flat, screen up, top edge pointing left: the head faces the device's +x axis.
-        // With the device unrotated that's world -90° yaw; the tracker zeroes it.
+        // With the device unrotated the head looks 90° to the right of world +y; the tracker zeroes it.
         val head = Mounting(Facing.SCREEN_UP, HeadDirection.LEFT).headOrientation(Quat.IDENTITY)
-        assertEquals(-90.0, head.toHeadAngles().yaw, 1e-6)
+        assertEquals(90.0, head.toHeadAngles().yaw, 1e-6)
 
-        val tracker = HeadTracker(Mounting(Facing.SCREEN_UP, HeadDirection.LEFT))
-        assertAngles(HeadAngles(0.0, 0.0, 0.0), tracker.process(Quat.IDENTITY).toHeadAngles())
+        val tracker = HeadTracker(Mounting(Facing.SCREEN_UP, HeadDirection.LEFT), settleNs = 0)
+        assertAngles(HeadAngles(0.0, 0.0, 0.0), tracker.process(Quat.IDENTITY, 0).toHeadAngles())
     }
 
     @Test
     fun trackerZeroesYawButKeepsPitchAndRoll() {
         val m = Mounting(Facing.SCREEN_UP, HeadDirection.RIGHT)
-        val tracker = HeadTracker(m)
+        val tracker = HeadTracker(m, settleNs = 0)
 
-        val start = tracker.process(deviceFor(head(140.0, 12.0, -7.0), m)).toHeadAngles()
+        val start = tracker.process(deviceFor(head(140.0, 12.0, -7.0), m), 0).toHeadAngles()
         assertAngles(HeadAngles(0.0, 12.0, -7.0), start)
 
-        val turned = tracker.process(deviceFor(head(170.0, 12.0, -7.0), m)).toHeadAngles()
+        val turned = tracker.process(deviceFor(head(170.0, 12.0, -7.0), m), 0).toHeadAngles()
         assertAngles(HeadAngles(30.0, 12.0, -7.0), turned)
 
         // Crossing ±180° in world yaw stays continuous relative to the start.
-        val across = tracker.process(deviceFor(head(-160.0, 0.0, 0.0), m)).toHeadAngles()
+        val across = tracker.process(deviceFor(head(-160.0, 0.0, 0.0), m), 0).toHeadAngles()
         assertAngles(HeadAngles(60.0, 0.0, 0.0), across)
 
         tracker.recenter()
-        val recentered = tracker.process(deviceFor(head(-160.0, 0.0, 0.0), m)).toHeadAngles()
+        val recentered = tracker.process(deviceFor(head(-160.0, 0.0, 0.0), m), 0).toHeadAngles()
         assertAngles(HeadAngles(0.0, 0.0, 0.0), recentered)
     }
 
@@ -109,29 +109,29 @@ class TrackingTest {
     }
 
     @Test
-    fun uprightCameraForwardPhoneFacingYouIsStraightAhead() {
+    fun uprightScreenFacingYouIsStraightAhead() {
         // Phone standing upright in front of you, screen towards your face, top edge up:
         // device y = world up, device z = towards you (world -y). That's +90° about world x.
         val device = Quat.aboutX(rad(90.0))
-        val head = Mounting(Facing.CAMERA_FORWARD, HeadDirection.UP).headOrientation(device)
+        val head = Mounting(Facing.SCREEN_BACK, HeadDirection.UP).headOrientation(device)
         assertAngles(HeadAngles(0.0, 0.0, 0.0), head.toHeadAngles())
     }
 
     @Test
-    fun uprightCameraBackScreenForwardIsStraightAhead() {
+    fun uprightScreenForwardIsStraightAhead() {
         // Screen faces forward (world +y), top edge up: turn 180° about up after standing upright.
         val device = Quat.aboutZ(rad(180.0)) * Quat.aboutX(rad(90.0))
-        val head = Mounting(Facing.CAMERA_BACK, HeadDirection.UP).headOrientation(device)
+        val head = Mounting(Facing.SCREEN_FORWARD, HeadDirection.UP).headOrientation(device)
         assertAngles(HeadAngles(0.0, 0.0, 0.0), head.toHeadAngles())
     }
 
     @Test
     fun uprightMountTracksNodding() {
         // Looking up 15° tilts a forehead-mounted phone back by 15°.
-        val m = Mounting(Facing.CAMERA_FORWARD, HeadDirection.LEFT)
-        val tracker = HeadTracker(m)
-        tracker.process(deviceFor(head(0.0, 0.0, 0.0), m))
-        assertAngles(HeadAngles(0.0, 15.0, 0.0), tracker.process(deviceFor(head(0.0, 15.0, 0.0), m)).toHeadAngles())
+        val m = Mounting(Facing.SCREEN_BACK, HeadDirection.LEFT)
+        val tracker = HeadTracker(m, settleNs = 0)
+        tracker.process(deviceFor(head(0.0, 0.0, 0.0), m), 0)
+        assertAngles(HeadAngles(0.0, 15.0, 0.0), tracker.process(deviceFor(head(0.0, 15.0, 0.0), m), 0).toHeadAngles())
     }
 
     @Test
@@ -140,5 +140,44 @@ class TrackingTest {
             assertEquals(f.name, 4, f.topEdges.size)
         }
         assertEquals(12, Mounting.ALL.size)
+    }
+
+    @Test
+    fun flippingTurnsThePhone180AboutTheScreen() {
+        val pose = head(20.0, 10.0, -5.0)
+        for (m in Mounting.ALL) {
+            val f = m.flipped()
+            assertEquals(m.facing, f.facing)
+            assertEquals(m.topEdge.opposite, f.topEdge)
+            assertEquals(m, f.flipped())
+            // Both describe the same head pose once the device rotation matches the mount.
+            assertAngles(pose.toHeadAngles(), f.headOrientation(deviceFor(pose, f)).toHeadAngles())
+        }
+    }
+
+    @Test
+    fun presetsMatchThemselvesAndTheirFlip() {
+        for (p in MountPreset.entries) {
+            assertEquals(p, MountPreset.of(p.mounting))
+            assertEquals(p, MountPreset.of(p.mounting.flipped()))
+        }
+        assertEquals(null, MountPreset.of(Mounting(Facing.SCREEN_BACK, HeadDirection.UP)))
+    }
+
+    @Test
+    fun trackerIgnoresTheFirstHalfSecondBeforeZeroing() {
+        val m = Mounting(Facing.SCREEN_UP, HeadDirection.LEFT)
+        val tracker = HeadTracker(m)
+        val ms = 1_000_000L
+        // A stale first event pointing somewhere else entirely must not become "forward".
+        assertEquals(Quat.IDENTITY, tracker.process(deviceFor(head(170.0, 0.0, 0.0), m), 0))
+        assertEquals(Quat.IDENTITY, tracker.process(deviceFor(head(40.0, 5.0, 0.0), m), 499 * ms))
+        assertEquals(null, tracker.zeroYaw)
+        // The first settled sample is forward; later turns are relative to it.
+        assertAngles(HeadAngles(0.0, 5.0, 0.0), tracker.process(deviceFor(head(40.0, 5.0, 0.0), m), 500 * ms).toHeadAngles())
+        assertAngles(HeadAngles(-20.0, 5.0, 0.0), tracker.process(deviceFor(head(20.0, 5.0, 0.0), m), 600 * ms).toHeadAngles())
+        // Recenter zeroes on the next sample straight away (the sensor has settled by then).
+        tracker.recenter()
+        assertAngles(HeadAngles(0.0, 5.0, 0.0), tracker.process(deviceFor(head(20.0, 5.0, 0.0), m), 700 * ms).toHeadAngles())
     }
 }

@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 
 /**
  * opentrack "UDP over network" input: six f64 values x, y, z (cm), yaw, pitch, roll (degrees).
+ * [io.github.skorczanfff.capcam.tracking.HeadAngles] already uses opentrack's signs (yaw+ = right).
  * The phone can't measure position, so x, y and z are always 0.
  */
 object OpentrackFormat : OutputFormat {

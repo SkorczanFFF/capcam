@@ -9,14 +9,17 @@ enum class HeadDirection(val x: Int, val y: Int, val z: Int, val label: String) 
     UP(0, 0, 1, "up"),
     DOWN(0, 0, -1, "down");
 
+    val opposite: HeadDirection
+        get() = entries.first { it.x == -x && it.y == -y && it.z == -z }
+
     fun isPerpendicularTo(o: HeadDirection) = x * o.x + y * o.y + z * o.z == 0
 }
 
 /** Which way the screen faces. The rear camera always points the opposite way. */
 enum class Facing(val label: String, val screenNormal: HeadDirection) {
-    SCREEN_UP("Flat, screen up (cap brim)", HeadDirection.UP),
-    CAMERA_FORWARD("Upright, camera forward (forehead, helmet front)", HeadDirection.BACK),
-    CAMERA_BACK("Upright, screen forward", HeadDirection.FORWARD);
+    SCREEN_UP("Flat, screen up", HeadDirection.UP),
+    SCREEN_FORWARD("Upright, screen facing forward", HeadDirection.FORWARD),
+    SCREEN_BACK("Upright, screen facing your forehead", HeadDirection.BACK);
 
     /** Top-edge directions that make sense for this facing (perpendicular to the screen). */
     val topEdges: List<HeadDirection>
@@ -43,6 +46,9 @@ data class Mounting(val facing: Facing, val topEdge: HeadDirection) {
     val label: String
         get() = "${facing.label} · ${if (isLandscape) "landscape" else "portrait"}, top edge ${topEdge.label}"
 
+    /** The same position with the phone turned 180° about its screen normal. */
+    fun flipped() = Mounting(facing, topEdge.opposite)
+
     /** Maps head coordinates to device coordinates. */
     private val headToDevice: Quat = run {
         // Device axes expressed in head coordinates: y = top edge, z = out of the screen, x = y × z.
@@ -63,7 +69,36 @@ data class Mounting(val facing: Facing, val topEdge: HeadDirection) {
     fun headOrientation(deviceToWorld: Quat): Quat = deviceToWorld * headToDevice
 
     companion object {
-        val DEFAULT = Mounting(Facing.SCREEN_UP, HeadDirection.LEFT)
+        val DEFAULT get() = MountPreset.LYING_FLAT.mounting
         val ALL: List<Mounting> = Facing.entries.flatMap { f -> f.topEdges.map { Mounting(f, it) } }
+    }
+}
+
+/**
+ * The three ways we expect people to wear the phone. Only the phone's orientation matters for
+ * tracking, not where on the head it sits, so "standing" covers the brim, forehead and helmet.
+ * Each preset can also be turned 180°.
+ */
+enum class MountPreset(val title: String, val where: String, val mounting: Mounting) {
+    LYING_FLAT(
+        "Lying flat",
+        "On the cap brim",
+        Mounting(Facing.SCREEN_UP, HeadDirection.LEFT),
+    ),
+    STANDING_PORTRAIT(
+        "Standing, portrait",
+        "On the brim, forehead or helmet",
+        Mounting(Facing.SCREEN_FORWARD, HeadDirection.UP),
+    ),
+    STANDING_LANDSCAPE(
+        "Standing, landscape",
+        "On the brim, forehead or helmet",
+        Mounting(Facing.SCREEN_FORWARD, HeadDirection.LEFT),
+    );
+
+    fun matches(m: Mounting) = m == mounting || m == mounting.flipped()
+
+    companion object {
+        fun of(m: Mounting): MountPreset? = entries.firstOrNull { it.matches(m) }
     }
 }

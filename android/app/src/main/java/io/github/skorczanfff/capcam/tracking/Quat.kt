@@ -19,9 +19,10 @@ data class Quat(val x: Double, val y: Double, val z: Double, val w: Double) {
     /**
      * Euler angles of a head → world rotation. World: z up. Head: x right, y forward, z up.
      * Order: yaw about world up, then pitch about head right, then roll about head forward
-     * (`R = Rz(yaw) · Rx(pitch) · Ry(roll)`).
+     * (`R = Rz(−yaw) · Rx(pitch) · Ry(roll)`).
      *
-     * Signs follow the right-hand rule: yaw+ = turn left, pitch+ = look up, roll+ = right ear down.
+     * Signs match opentrack: yaw+ = turn right, pitch+ = look up, roll+ = right ear down.
+     * (Yaw is the negated right-hand rotation about up; pitch and roll follow the right-hand rule.)
      */
     fun toHeadAngles(): HeadAngles {
         val m01 = 2 * (x * y - z * w)
@@ -30,7 +31,7 @@ data class Quat(val x: Double, val y: Double, val z: Double, val w: Double) {
         val m21 = 2 * (y * z + x * w)
         val m22 = 1 - 2 * (x * x + y * y)
         return HeadAngles(
-            yaw = Math.toDegrees(atan2(-m01, m11)),
+            yaw = Math.toDegrees(atan2(m01, m11)),
             pitch = Math.toDegrees(asin(m21.coerceIn(-1.0, 1.0))),
             roll = Math.toDegrees(atan2(-m20, m22)),
         )

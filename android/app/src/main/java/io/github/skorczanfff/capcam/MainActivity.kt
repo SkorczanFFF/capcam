@@ -1,6 +1,11 @@
 package io.github.skorczanfff.capcam
 
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.view.KeyEvent
 import android.os.SystemClock
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -50,11 +55,14 @@ import androidx.compose.ui.unit.dp
 import io.github.skorczanfff.capcam.output.OutputFormat
 import io.github.skorczanfff.capcam.tracking.Facing
 import io.github.skorczanfff.capcam.tracking.HeadDirection
+import io.github.skorczanfff.capcam.tracking.MountPreset
 import io.github.skorczanfff.capcam.tracking.Mounting
 import io.github.skorczanfff.capcam.tracking.OrientationSource
 import io.github.skorczanfff.capcam.ui.Brand
 import io.github.skorczanfff.capcam.ui.BrandTheme
 import io.github.skorczanfff.capcam.ui.GradientButton
+import io.github.skorczanfff.capcam.ui.MountTile
+import io.github.skorczanfff.capcam.ui.describe
 import io.github.skorczanfff.capcam.ui.OutlineButton
 import io.github.skorczanfff.capcam.ui.Pill
 import io.github.skorczanfff.capcam.ui.brandChipColors
@@ -71,6 +79,7 @@ class MainActivity : ComponentActivity() {
     private var streamer: Streamer? = null
 
     private var running by mutableStateOf(false)
+    private var paused by mutableStateOf(false)
     private var stats by mutableStateOf(StreamStats())
     private var lastStatsAt by mutableLongStateOf(0L)
 
@@ -96,11 +105,17 @@ class MainActivity : ComponentActivity() {
     private fun startStreaming(config: StreamConfig, dim: Boolean) {
         stats = StreamStats()
         lastStatsAt = SystemClock.elapsedRealtime()
-        streamer = Streamer(this, config) { s ->
-            stats = s
-            lastStatsAt = SystemClock.elapsedRealtime()
-        }.also { it.start() }
+        streamer = Streamer(
+            this,
+            config,
+            onStats = { s ->
+                stats = s
+                lastStatsAt = SystemClock.elapsedRealtime()
+            },
+            onZeroed = ::buzz,
+        ).also { it.start() }
         running = true
+        paused = false
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         if (dim) window.attributes = window.attributes.apply { screenBrightness = 0.01f }
     }
@@ -109,6 +124,7 @@ class MainActivity : ComponentActivity() {
         streamer?.stop()
         streamer = null
         running = false
+        paused = false
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes = window.attributes.apply {
             screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -155,6 +171,7 @@ class MainActivity : ComponentActivity() {
                 when {
                     !running -> Pill("stopped", null)
                     stale || stats.problem != null -> Pill("problem", Brand.OrangeGradient)
+                    paused -> Pill("default view", null)
                     else -> Pill("streaming", Brand.RaspberryGradient)
                 }
             }
@@ -187,6 +204,21 @@ class MainActivity : ComponentActivity() {
                 } else {
                     OutlineButton("Recenter", enabled = false, onClick = {}, modifier = buttonModifier)
                 }
+            }
+            Text(
+                "Recenter: look straight at the monitor and press a volume button on the phone " +
+                    "(or Recenter here). The phone buzzes when it's done.",
+                color = Brand.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            // Sends the neutral pose so the game shows its normal camera; tracking keeps running.
+            val pauseModifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+            if (paused) {
+                GradientButton("Resume head tracking", enabled = running, onClick = { pauseTracking(false) }, modifier = pauseModifier)
+            } else {
+                OutlineButton("Default game camera", enabled = running, onClick = { pauseTracking(true) }, modifier = pauseModifier)
             }
 
             HorizontalDivider(color = Brand.DeepBlue)
@@ -235,34 +267,77 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            SectionTitle("Phone position")
-            Column {
-                Facing.entries.forEach { f ->
-                    val pick = {
-                        // Keep the top edge when it still fits the new facing (left/right fit all of them).
-                        val top = mounting.topEdge.takeIf { it in f.topEdges } ?: f.topEdges.first()
-                        mounting = Mounting(f, top)
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(selected = f == mounting.facing, enabled = editable, onClick = pick),
-                    ) {
-                        RadioButton(
-                            selected = f == mounting.facing,
-                            enabled = editable,
-                            onClick = pick,
-                            colors = brandRadioColors(),
-                        )
-                        Text(f.label, color = if (editable) Brand.White else Brand.Muted)
-                    }
+            SectionTitle("How you wear the phone")
+            val preset = MountPreset.of(mounting)
+            val isFlipped = preset != null && mounting != preset.mounting
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                MountPreset.entries.forEach { p ->
+                    // Show each tile as it would be picked: switching tiles keeps the 180° choice.
+                    val option = if (isFlipped) p.mounting.flipped() else p.mounting
+                    MountTile(
+                        preset = p,
+                        mounting = if (p == preset) mounting else option,
+                        selected = p == preset,
+                        enabled = editable,
+                        onClick = { mounting = option },
+                    )
                 }
             }
+            if (preset == null) {
+                Text("Custom: ${describe(mounting)}", color = Brand.RealWhite, style = MaterialTheme.typography.bodyMedium)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Phone turned 180°")
+                    Text(
+                        "Swaps the top edge (the end with the front camera): left ↔ right, up ↔ down.",
+                        color = Brand.Muted,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(
+                    checked = isFlipped,
+                    enabled = editable && preset != null,
+                    onCheckedChange = { mounting = mounting.flipped() },
+                    colors = brandSwitchColors(),
+                )
+            }
 
-            SectionTitle("Top edge of the phone points")
-            EdgeRow("Landscape", mounting.facing.landscapeEdges, mounting, editable) { mounting = it }
-            EdgeRow("Portrait", mounting.facing.portraitEdges, mounting, editable) { mounting = it }
+            var showCustom by remember { mutableStateOf(preset == null) }
+            OutlineButton(
+                if (showCustom) "Hide custom position" else "Custom position…",
+                enabled = true,
+                onClick = { showCustom = !showCustom },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (showCustom) {
+                Column {
+                    Facing.entries.forEach { f ->
+                        val pick = {
+                            // Keep the top edge when it still fits the new facing (left/right fit all of them).
+                            val top = mounting.topEdge.takeIf { it in f.topEdges } ?: f.topEdges.first()
+                            mounting = Mounting(f, top)
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .selectable(selected = f == mounting.facing, enabled = editable, onClick = pick),
+                        ) {
+                            RadioButton(
+                                selected = f == mounting.facing,
+                                enabled = editable,
+                                onClick = pick,
+                                colors = brandRadioColors(),
+                            )
+                            Text(f.label, color = if (editable) Brand.White else Brand.Muted)
+                        }
+                    }
+                }
+                Text("Top edge of the phone points", color = Brand.Muted)
+                EdgeRow("Landscape", mounting.facing.landscapeEdges, mounting, editable) { mounting = it }
+                EdgeRow("Portrait", mounting.facing.portraitEdges, mounting, editable) { mounting = it }
+            }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Dim screen while streaming", modifier = Modifier.weight(1f))
@@ -271,6 +346,36 @@ class MainActivity : ComponentActivity() {
 
             Text(sensorInfo, color = Brand.Muted, style = MaterialTheme.typography.bodySmall)
         }
+    }
+
+    /** Volume buttons recenter while streaming: they're reachable with the phone on your head. */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (running && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            if (event.repeatCount == 0) streamer?.recenter()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (running && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) return true
+        return super.onKeyUp(keyCode, event)
+    }
+
+    /** Short buzz when "forward" is captured, so you know it worked without looking at the screen. */
+    private fun buzz() {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSystemService(VibratorManager::class.java)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Vibrator::class.java)
+        } ?: return
+        vibrator.vibrate(VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    private fun pauseTracking(value: Boolean) {
+        paused = value
+        streamer?.setPaused(value)
     }
 
     @Composable

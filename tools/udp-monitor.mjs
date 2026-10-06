@@ -31,7 +31,8 @@ function percentile(sorted, p) {
 }
 
 function capcamQuatToAngles(x, y, z, w) {
-  // Same convention as the phone: R = Rz(yaw) · Rx(pitch) · Ry(roll); head x right, y forward, z up.
+  // Same convention as the phone and opentrack: R = Rz(-yaw) · Rx(pitch) · Ry(roll); head x right, y forward, z up.
+  // yaw+ = turn right, pitch+ = look up, roll+ = right ear down.
   const m01 = 2 * (x * y - z * w);
   const m11 = 1 - 2 * (x * x + z * z);
   const m20 = 2 * (x * z - y * w);
@@ -39,7 +40,7 @@ function capcamQuatToAngles(x, y, z, w) {
   const m22 = 1 - 2 * (x * x + y * y);
   const deg = 180 / Math.PI;
   return {
-    yaw: Math.atan2(-m01, m11) * deg,
+    yaw: Math.atan2(m01, m11) * deg,
     pitch: Math.asin(Math.max(-1, Math.min(1, m21))) * deg,
     roll: Math.atan2(-m20, m22) * deg,
   };

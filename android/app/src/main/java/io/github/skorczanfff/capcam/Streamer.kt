@@ -8,6 +8,7 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.os.Process
 import android.os.SystemClock
+import android.util.Log
 import io.github.skorczanfff.capcam.output.OutputFormat
 import io.github.skorczanfff.capcam.output.Sample
 import io.github.skorczanfff.capcam.tracking.HeadAngles
@@ -45,6 +46,8 @@ class Streamer(
     context: Context,
     private val config: StreamConfig,
     private val onStats: (StreamStats) -> Unit,
+    /** Called on the main thread whenever "forward" is captured (after Start and after each recenter). */
+    private val onZeroed: () -> Unit = {},
 ) {
     private val appContext = context.applicationContext
     private val source = OrientationSource(appContext)
@@ -64,6 +67,7 @@ class Streamer(
     private var lastSendError: String? = null
     private var windowStartNs = 0L
     private var windowSamples = 0
+    private var paused = false
 
     fun start() {
         acquireWifiLock()
@@ -87,6 +91,14 @@ class Streamer(
         handler.post { tracker.recenter() }
     }
 
+    /**
+     * While paused, the neutral pose (looking straight ahead) is sent instead of the head pose,
+     * so the game shows its normal camera without losing the connection.
+     */
+    fun setPaused(value: Boolean) {
+        handler.post { paused = value }
+    }
+
     fun stop() {
         handler.post {
             source.stop()
@@ -99,7 +111,15 @@ class Streamer(
     }
 
     private fun onSample(deviceToWorld: Quat, timestampNs: Long) {
-        val head = tracker.process(deviceToWorld)
+        val wasZeroed = tracker.zeroYaw != null
+        val tracked = tracker.process(deviceToWorld, timestampNs)
+        if (!wasZeroed && tracker.zeroYaw != null) {
+            Log.i(TAG, "Zeroed yaw at sample $sequence (raw head yaw ${"%.1f".format(tracker.zeroYaw)}°, device $deviceToWorld)")
+            main.post(onZeroed)
+        } else if (sequence < 3) {
+            Log.i(TAG, "Sample $sequence: device $deviceToWorld")
+        }
+        val head = if (paused) Quat.IDENTITY else tracked
         val sample = Sample(head, head.toHeadAngles(), sequence++, timestampNs)
 
         buffer.clear()
@@ -150,6 +170,7 @@ class Streamer(
     }
 
     private companion object {
+        const val TAG = "CapCam"
         const val STATS_INTERVAL_NS = 250_000_000L
     }
 }
