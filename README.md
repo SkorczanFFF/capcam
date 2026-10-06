@@ -58,13 +58,18 @@ Any game that supports TrackIR should work the same way.
    either `opentrack-…-win32-setup.exe` (installer) or `opentrack-…-win32-portable.7z` (unpack it anywhere,
    e.g. with 7-Zip). Skip the `dbginfo` file: it's only for debugging opentrack itself.
 2. In the main window:
-   - **Input:** `UDP over network`, port `4242` (settings button next to it).
-   - **Output:** `freetrack 2.0 Enhanced` (leave "Enable both" on).
+   - **Input:** `UDP over network`. Its port is `4242` by default (check with the hammer button next to it).
+   - **Output:** `freetrack 2.0 Enhanced` (hammer button: leave "Enable both" on).
    - **Filter:** `Accela`.
+
+   ![opentrack main window: Input "UDP over network", Output "freetrack 2.0 Enhanced", Filter "Accela", profile default.ini, and the Start and Stop buttons](docs/opentrack_settings.png)
 3. **Options › Shortcuts:** bind **Center** to a key or, better, a button on your wheel. This is how
    you set "straight ahead" while driving. Binding **Toggle tracking** too is handy.
 4. The first time you press **Start**, Windows asks whether opentrack may use the network:
    allow it on **private networks** only. Your home network must be set to *Private* in Windows.
+5. **Check the connection:** with the phone streaming and opentrack started, the **Raw tracker data**
+   numbers (Yaw, Pitch, Roll) change when you turn your head and the octopus turns with you.
+   **Game data** is what games receive after centring and the **Mapping** curves.
 
 opentrack saves its settings when you close it. Use one profile per game (profile list at the top
 of the window) if games need different sensitivity.
@@ -88,8 +93,8 @@ cap shows up as camera shake.
 
 ## 4. Every session
 
-1. Put the cap on. In the app enter your **PC's address** (shown in Windows under
-   *Settings › Network › Properties › IPv4*) and port `4242`, keep output **opentrack**, tap **Start**.
+1. Put the cap on. In the app enter your **PC's address** (see [below](#find-your-pcs-address)) and
+   port `4242`, keep output **opentrack**, tap **Start**.
    The phone buzzes when it has set "forward".
 2. Look straight at the monitor and press **Start in opentrack**.
 3. Start the game. **Order matters:** games look for TrackIR once, when they start, so opentrack
@@ -100,6 +105,27 @@ cap shows up as camera shake.
 **One place sets "forward".** For games through opentrack, centre with opentrack's Center
 shortcut. Recentering on the phone *after* opentrack has started adds to opentrack's centre and
 can leave the camera looking sideways.
+
+### Find your PC's address
+
+The app needs the PC's address on your home network, something like `192.168.1.20`.
+
+- **Windows 11:** *Settings › Network & internet › Ethernet* (or *Wi-Fi › your network's properties*):
+  the **IPv4 address** line.
+- **Or:** press `Win+R`, type `cmd`, press Enter, run `ipconfig` and look for **IPv4 Address** under
+  the adapter you're connected with (Ethernet or Wi-Fi).
+
+Don't use websites like *whatismyip*: they show your **internet (public) address**, the one your
+router has towards the outside world. The phone needs the PC's **local** address on your home
+network, which only the PC itself can tell you (as above).
+
+Which one is right if there are several: the one whose **first three numbers match the phone's**
+(phone: *Settings › About phone › Status* or the Wi-Fi network details). E.g. phone `192.168.1.35`
+→ PC `192.168.1.20`. Ignore VPN adapters (NordVPN/NordLynx, Tailscale and similar, often `10.5.x.x`
+or `100.x.x.x`): turn the VPN off.
+
+The address can change after a router restart. To keep it fixed, reserve it for your PC in the
+router's settings (*DHCP reservation* / *static lease*).
 
 ### Phone app controls
 

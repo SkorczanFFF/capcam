@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- README: how to find the PC's address (Windows 11 settings or `ipconfig`, which address to pick, VPN adapters, DHCP reservation).
+- README: explains why sites like whatismyip show the wrong address (public instead of the PC's local one).
+- README: opentrack main window screenshot, the hammer settings buttons, and a connection check (Raw tracker data moves with your head).
+
 ## [0.1.0] - 2026-10-06
 
 First release: head tracking for TrackIR games through opentrack, tested in BeamNG.drive and
