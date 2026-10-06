@@ -32,10 +32,11 @@ import io.github.skorczanfff.capcam.tracking.Facing
 import io.github.skorczanfff.capcam.tracking.HeadDirection
 import io.github.skorczanfff.capcam.tracking.MountPreset
 import io.github.skorczanfff.capcam.tracking.Mounting
+import kotlin.math.sqrt
 
 /**
- * Full-width selectable tile: a side view (you, your cap, the phone, the monitor in front of you)
- * and a plain-words description of the position.
+ * Full-width selectable tile: a small side view of the cap with the phone on it, and a plain-words
+ * description of the position.
  */
 @Composable
 fun MountTile(
@@ -61,10 +62,10 @@ fun MountTile(
     ) {
         Canvas(
             modifier = Modifier
-                .width(132.dp)
-                .height(88.dp),
+                .width(96.dp)
+                .height(72.dp),
         ) {
-            drawSideView(ink, standing = mounting.facing != Facing.SCREEN_UP, landscape = mounting.isLandscape)
+            drawCapIcon(ink, standing = mounting.facing != Facing.SCREEN_UP, landscape = mounting.isLandscape)
         }
         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
             Text(preset.title, color = ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -92,82 +93,56 @@ fun describe(m: Mounting): String {
     return "${screen.replaceFirstChar { it.uppercase() }} · ${if (m.isLandscape) "landscape" else "portrait"} · $top"
 }
 
-private fun DrawScope.line(ink: Color, from: Offset, to: Offset) =
-    drawLine(ink, from, to, strokeWidth = 2.dp.toPx(), cap = StrokeCap.Round)
-
 private fun DrawScope.arrow(ink: Color, from: Offset, to: Offset) {
-    line(ink, from, to)
+    val stroke = 2.5.dp.toPx()
+    drawLine(ink, from, to, strokeWidth = stroke, cap = StrokeCap.Round)
     val dx = to.x - from.x
     val dy = to.y - from.y
-    val len = kotlin.math.sqrt(dx * dx + dy * dy)
+    val len = sqrt(dx * dx + dy * dy)
     val ux = dx / len
     val uy = dy / len
-    val head = 5.dp.toPx()
-    line(ink, to, Offset(to.x - ux * head - uy * head * 0.7f, to.y - uy * head + ux * head * 0.7f))
-    line(ink, to, Offset(to.x - ux * head + uy * head * 0.7f, to.y - uy * head - ux * head * 0.7f))
+    val head = 6.dp.toPx()
+    val spread = 0.8f
+    drawLine(ink, to, Offset(to.x - ux * head - uy * head * spread, to.y - uy * head + ux * head * spread), stroke, StrokeCap.Round)
+    drawLine(ink, to, Offset(to.x - ux * head + uy * head * spread, to.y - uy * head - ux * head * spread), stroke, StrokeCap.Round)
 }
 
-/** You seen from the side, looking right at a monitor, with the phone on the cap brim. */
-private fun DrawScope.drawSideView(ink: Color, standing: Boolean, landscape: Boolean) {
+/**
+ * Minimal side view: a cap with its brim pointing forward (right), the phone on the brim and an
+ * arrow showing where the screen faces. The cap is muted so the phone and the arrow stand out.
+ */
+private fun DrawScope.drawCapIcon(ink: Color, standing: Boolean, landscape: Boolean) {
     val w = size.width
     val h = size.height
-    val stroke = Stroke(width = 2.dp.toPx())
+    val cap = ink.copy(alpha = 0.45f)
+    val brimY = h * 0.72f
+    val gap = 3.dp.toPx()
+    val thick = 4.dp.toPx()
+    val corner = CornerRadius(1.5.dp.toPx())
 
-    // Monitor in front of you: a wide screen on a stand, so it doesn't look like a phone.
-    val monSize = Size(w * 0.24f, h * 0.30f)
-    val mon = Offset(w - monSize.width - 1.dp.toPx(), h * 0.26f)
-    drawRoundRect(ink, mon, monSize, CornerRadius(2.dp.toPx()), style = stroke)
-    val standX = mon.x + monSize.width / 2
-    line(ink, Offset(standX, mon.y + monSize.height), Offset(standX, h * 0.74f))
-    line(ink, Offset(standX - monSize.width * 0.3f, h * 0.74f), Offset(standX + monSize.width * 0.3f, h * 0.74f))
-
-    // Head with a nose pointing at the monitor.
-    val r = h * 0.25f
-    val c = Offset(w * 0.24f, h * 0.66f)
-    drawCircle(ink, radius = r, center = c, style = stroke)
-    val nose = Path().apply {
-        moveTo(c.x + r * 0.95f, c.y - r * 0.05f)
-        lineTo(c.x + r * 1.25f, c.y + r * 0.2f)
-        lineTo(c.x + r * 0.9f, c.y + r * 0.35f)
+    // Crown: a soft dome from the back of the cap to the front.
+    val crown = Path().apply {
+        moveTo(w * 0.04f, brimY)
+        cubicTo(w * 0.04f, h * 0.32f, w * 0.20f, h * 0.24f, w * 0.31f, h * 0.24f)
+        cubicTo(w * 0.44f, h * 0.24f, w * 0.56f, h * 0.36f, w * 0.58f, brimY)
+        close()
     }
-    drawPath(nose, ink, style = stroke)
+    drawPath(crown, cap)
+    // Brim: a thick rounded bar reaching forward, dipping slightly at the tip.
+    drawLine(cap, Offset(w * 0.50f, brimY), Offset(w * 0.86f, brimY + h * 0.03f), strokeWidth = 5.dp.toPx(), cap = StrokeCap.Round)
 
-    // Cap: crown over the head and a brim reaching towards the monitor.
-    drawArc(
-        ink,
-        startAngle = 180f,
-        sweepAngle = 180f,
-        useCenter = true,
-        topLeft = Offset(c.x - r * 1.05f, c.y - r * 1.15f),
-        size = Size(r * 2.1f, r * 1.6f),
-    )
-    val brimY = c.y - r * 0.38f
-    val brimStart = c.x + r * 0.6f
-    val brimEnd = c.x + r * 1.9f
-    line(ink, Offset(brimStart, brimY), Offset(brimEnd, brimY))
-
-    val phoneX = (brimStart + brimEnd) / 2 + r * 0.2f
     if (!standing) {
         // Lying flat on the brim, screen up.
-        val len = r * 1.1f
-        drawRoundRect(
-            ink,
-            Offset(phoneX - len / 2, brimY - 5.dp.toPx()),
-            Size(len, 4.dp.toPx()),
-            CornerRadius(1.5f.dp.toPx()),
-        )
-        arrow(ink, Offset(phoneX, brimY - 8.dp.toPx()), Offset(phoneX, brimY - 22.dp.toPx()))
+        val len = w * 0.26f
+        val cx = w * 0.70f
+        drawRoundRect(ink, Offset(cx - len / 2, brimY - gap - thick), Size(len, thick), corner)
+        arrow(ink, Offset(cx, brimY - gap - thick - 4.dp.toPx()), Offset(cx, brimY - gap - thick - 22.dp.toPx()))
     } else {
-        // Standing on the brim, screen towards the monitor.
-        val tall = if (landscape) r * 0.75f else r * 1.35f
-        val thick = 4.dp.toPx()
-        drawRoundRect(
-            ink,
-            Offset(phoneX - thick / 2, brimY - tall),
-            Size(thick, tall),
-            CornerRadius(1.5f.dp.toPx()),
-        )
-        val y = brimY - tall / 2
-        arrow(ink, Offset(phoneX + thick, y), Offset(mon.x - 4.dp.toPx(), y))
+        // Standing on the brim, screen facing forward.
+        val tall = if (landscape) h * 0.24f else h * 0.44f
+        val x = w * 0.66f
+        drawRoundRect(ink, Offset(x - thick / 2, brimY - gap - tall), Size(thick, tall), corner)
+        val y = brimY - gap - tall / 2
+        arrow(ink, Offset(x + thick, y), Offset(w - 3.dp.toPx(), y))
     }
 }

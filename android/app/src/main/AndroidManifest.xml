@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Show the phone's own address and spot an active VPN -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Wi-Fi low-latency lock while streaming -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Sensor rates above 200 Hz on Android 12+ -->

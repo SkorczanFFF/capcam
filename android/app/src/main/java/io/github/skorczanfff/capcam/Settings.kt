@@ -23,9 +23,11 @@ class Settings(context: Context) {
 
     fun setPort(format: OutputFormat, port: Int) = prefs.edit().putInt("port.${format.label}", port).apply()
 
-    var dimWhileStreaming: Boolean
-        get() = prefs.getBoolean("dim", true)
-        set(value) = prefs.edit().putBoolean("dim", value).apply()
+    var screenMode: ScreenMode
+        get() = ScreenMode.entries.firstOrNull { it.name == prefs.getString("screen", null) }
+            // 0.1.0 stored a dim on/off switch.
+            ?: if (prefs.getBoolean("dim", true)) ScreenMode.DIM else ScreenMode.ON
+        set(value) = prefs.edit().putString("screen", value.name).apply()
 
     var mounting: Mounting
         get() = Mounting.ALL.firstOrNull {
@@ -36,4 +38,13 @@ class Settings(context: Context) {
             .putString("mount.facing", value.facing.name)
             .putString("mount.topEdge", value.topEdge.name)
             .apply()
+}
+
+/** What the screen does while streaming. */
+enum class ScreenMode(val label: String) {
+    ON("On"),
+    DIM("Dim"),
+
+    /** Fully black (on an OLED screen the pixels are off) but still on, so tracking and volume keys keep working. */
+    BLACK("Black"),
 }

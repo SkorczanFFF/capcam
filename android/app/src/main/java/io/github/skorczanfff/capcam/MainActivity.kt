@@ -1,7 +1,9 @@
 package io.github.skorczanfff.capcam
 
+import android.media.AudioAttributes
 import android.os.Build
 import android.os.Bundle
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -69,6 +71,15 @@ import io.github.skorczanfff.capcam.ui.brandChipColors
 import io.github.skorczanfff.capcam.ui.brandRadioColors
 import io.github.skorczanfff.capcam.ui.brandSwitchColors
 import io.github.skorczanfff.capcam.ui.brandTextFieldColors
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.Color
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import io.github.skorczanfff.capcam.net.Ipv4
+import io.github.skorczanfff.capcam.net.LocalNetwork
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.abs
@@ -82,16 +93,24 @@ class MainActivity : ComponentActivity() {
     private var paused by mutableStateOf(false)
     private var stats by mutableStateOf(StreamStats())
     private var lastStatsAt by mutableLongStateOf(0L)
+    private var screenMode by mutableStateOf(ScreenMode.DIM)
+
+    /** In Black mode a tap shows the app for a few seconds. */
+    private var revealed by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = Settings(this)
+        screenMode = settings.screenMode
         val sensorInfo = describeSensors(OrientationSource(this))
 
         setContent {
             BrandTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    CapCamScreen(sensorInfo)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Surface(modifier = Modifier.fillMaxSize()) {
+                        CapCamScreen(sensorInfo)
+                    }
+                    BlackOverlay()
                 }
             }
         }
@@ -102,7 +121,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun startStreaming(config: StreamConfig, dim: Boolean) {
+    private fun startStreaming(config: StreamConfig) {
         stats = StreamStats()
         lastStatsAt = SystemClock.elapsedRealtime()
         streamer = Streamer(
@@ -116,8 +135,9 @@ class MainActivity : ComponentActivity() {
         ).also { it.start() }
         running = true
         paused = false
+        revealed = false
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        if (dim) window.attributes = window.attributes.apply { screenBrightness = 0.01f }
+        applyBrightness()
     }
 
     private fun stopStreaming() {
@@ -126,8 +146,55 @@ class MainActivity : ComponentActivity() {
         running = false
         paused = false
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        applyBrightness()
+    }
+
+    private fun setScreen(mode: ScreenMode) {
+        screenMode = mode
+        settings.screenMode = mode
+        revealed = false
+        applyBrightness()
+    }
+
+    /** Minimum brightness while streaming in Dim and Black mode, the system's brightness otherwise. */
+    private fun applyBrightness() {
+        val low = running && screenMode != ScreenMode.ON
         window.attributes = window.attributes.apply {
-            screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            screenBrightness = if (low) 0.01f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        }
+    }
+
+    /** Covers everything, system bars included, with black while streaming in Black mode. */
+    @Composable
+    private fun BlackOverlay() {
+        val show = running && screenMode == ScreenMode.BLACK && !revealed
+        LaunchedEffect(show) {
+            val bars = WindowCompat.getInsetsController(window, window.decorView)
+            if (show) {
+                bars.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                bars.hide(WindowInsetsCompat.Type.systemBars())
+            } else {
+                bars.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+        LaunchedEffect(revealed) {
+            if (revealed) {
+                delay(10_000)
+                revealed = false
+            }
+        }
+        if (!show) return
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                    revealed = true
+                },
+        ) {
+            // Barely visible, so the screen stays effectively off but you can tell the app is alive.
+            Text("CapCam · tap to show", color = Color(0xFF161616), style = MaterialTheme.typography.bodySmall)
         }
     }
 
@@ -137,7 +204,6 @@ class MainActivity : ComponentActivity() {
         var format by remember { mutableStateOf(settings.format) }
         var portText by remember { mutableStateOf(settings.port(settings.format).toString()) }
         var mounting by remember { mutableStateOf(settings.mounting) }
-        var dim by remember { mutableStateOf(settings.dimWhileStreaming) }
 
         val port = portText.toIntOrNull()?.takeIf { it in 1..65535 }
         val canStart = host.isNotBlank() && port != null
@@ -193,8 +259,7 @@ class MainActivity : ComponentActivity() {
                             settings.format = format
                             settings.setPort(format, port!!)
                             settings.mounting = mounting
-                            settings.dimWhileStreaming = dim
-                            startStreaming(StreamConfig(host, port, format, mounting), dim)
+                            startStreaming(StreamConfig(host, port, format, mounting))
                         },
                         modifier = buttonModifier,
                     )
@@ -219,6 +284,26 @@ class MainActivity : ComponentActivity() {
                 GradientButton("Resume head tracking", enabled = running, onClick = { pauseTracking(false) }, modifier = pauseModifier)
             } else {
                 OutlineButton("Default game camera", enabled = running, onClick = { pauseTracking(true) }, modifier = pauseModifier)
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Screen while streaming", modifier = Modifier.weight(1f))
+                ScreenMode.entries.forEach { m ->
+                    FilterChip(
+                        selected = m == screenMode,
+                        onClick = { setScreen(m) },
+                        label = { Text(m.label) },
+                        colors = brandChipColors(),
+                    )
+                }
+            }
+            if (screenMode == ScreenMode.BLACK) {
+                Text(
+                    "Black: the screen goes fully dark while streaming (on this kind of screen the pixels are off), " +
+                        "but tracking and the volume buttons keep working. Tap it to see the app for 10 s.",
+                    color = Brand.Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
 
             HorizontalDivider(color = Brand.DeepBlue)
@@ -266,6 +351,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.width(104.dp),
                 )
             }
+            NetworkHints(host)
 
             SectionTitle("How you wear the phone")
             val preset = MountPreset.of(mounting)
@@ -339,11 +425,6 @@ class MainActivity : ComponentActivity() {
                 EdgeRow("Portrait", mounting.facing.portraitEdges, mounting, editable) { mounting = it }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Dim screen while streaming", modifier = Modifier.weight(1f))
-                Switch(checked = dim, enabled = editable, onCheckedChange = { dim = it }, colors = brandSwitchColors())
-            }
-
             Text(sensorInfo, color = Brand.Muted, style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -370,7 +451,47 @@ class MainActivity : ComponentActivity() {
             @Suppress("DEPRECATION")
             getSystemService(Vibrator::class.java)
         } ?: return
-        vibrator.vibrate(VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE))
+        // Two short taps. Marked as feedback for a physical button: the default (touch) usage is
+        // silenced when touch haptics are off, which made the buzz never arrive on some phones.
+        val effect = VibrationEffect.createWaveform(longArrayOf(0, 70, 90, 70), -1)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            vibrator.vibrate(effect, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_HARDWARE_FEEDBACK))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(
+                effect,
+                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION).build(),
+            )
+        }
+    }
+
+    /** The phone's own address, and warnings when the PC address can't be on the same network. */
+    @Composable
+    private fun NetworkHints(host: String) {
+        var local by remember { mutableStateOf(LocalNetwork.read(this)) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                local = LocalNetwork.read(this@MainActivity)
+                delay(3_000)
+            }
+        }
+        val phone = local.address
+        if (phone == null) {
+            Alert("This phone isn't on Wi-Fi. Connect it to the same network as your PC.")
+        } else {
+            val hint = Ipv4.commonPrefix(phone, local.prefixLength)
+                ?.let { " · your PC's address probably starts with $it" } ?: ""
+            Text("This phone: $phone$hint", color = Brand.Muted, style = MaterialTheme.typography.bodySmall)
+            if (Ipv4.sameSubnet(host, phone, local.prefixLength) == false) {
+                Alert(
+                    "$host isn't on this phone's network. Check the PC's address " +
+                        "(README › Find your PC's address) and turn off any VPN on the PC."
+                )
+            }
+        }
+        if (local.vpnActive) {
+            Alert("A VPN is on on this phone. Turn it off: it usually blocks the connection to your PC.")
+        }
     }
 
     private fun pauseTracking(value: Boolean) {

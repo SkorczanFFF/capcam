@@ -5,10 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Phone app: under the PC address it shows the phone's own address and what the PC's address should start with, and warns when the typed address isn't on the phone's network or a VPN is on.
+- Phone app: **Screen while streaming: On / Dim / Black** next to Start and Recenter, changeable while streaming. *Black* covers the whole screen including the system bars (on an OLED screen the pixels are off) while tracking and the volume buttons keep working; a tap shows the app for 10 s.
+
 ### Changed
+- Phone app: the "Dim screen while streaming" switch at the bottom is replaced by the screen modes above (a saved "dim" choice carries over).
+- Phone app: the "How you wear the phone" pictures are now a minimal cap with the phone on its brim and an arrow showing where the screen faces (no head or monitor).
 - README: how to find the PC's address (Windows 11 settings or `ipconfig`, which address to pick, VPN adapters, DHCP reservation).
 - README: explains why sites like whatismyip show the wrong address (public instead of the PC's local one).
 - README: opentrack main window screenshot, the hammer settings buttons, and a connection check (Raw tracker data moves with your head).
+
+### Fixed
+- Phone app: the recenter buzz never arrived on phones with touch haptics turned off. It is now sent as feedback for a physical button, and is two short taps.
 
 ## [0.1.0] - 2026-10-06
 

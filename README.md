@@ -108,7 +108,9 @@ can leave the camera looking sideways.
 
 ### Find your PC's address
 
-The app needs the PC's address on your home network, something like `192.168.1.20`.
+The app needs the PC's address on your home network, something like `192.168.1.20`. Under the address
+field the app shows the phone's own address and what the PC's should start with, and warns you when
+the address you typed isn't on the phone's network or a VPN is on.
 
 - **Windows 11:** *Settings › Network & internet › Ethernet* (or *Wi-Fi › your network's properties*):
   the **IPv4 address** line.
@@ -134,7 +136,7 @@ router's settings (*DHCP reservation* / *static lease*).
 | **Start / Stop** | Starts or stops sending |
 | **Recenter** or a **volume button** | Sets "forward" to where you look now (the phone buzzes). Volume buttons work while streaming, so you can use them with the phone on your head |
 | **Default game camera** | Sends "straight ahead" so the game shows its normal camera; tracking keeps running. **Resume head tracking** switches back |
-| **Dim screen while streaming** | Keeps the screen on but at minimum brightness. Turn it off to watch the live numbers |
+| **Screen while streaming: On / Dim / Black** | Next to the controls; can be changed while streaming. *Dim* keeps the screen at minimum brightness. *Black* makes it fully dark (on an OLED screen the pixels are off) while tracking and the volume buttons keep working; tap it to see the app for 10 s |
 
 The top panel shows the rate (aim for 100 Hz or more; a typical phone does about 200 Hz),
 the angles being sent (yaw+ = right, pitch+ = up, roll+ = right ear down) and any problems.
