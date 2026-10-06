@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-07
+
 ### Added
 - Phone app: under the PC address it shows the phone's own address and what the PC's address should start with, and warns when the typed address isn't on the phone's network or a VPN is on.
 - Phone app: **Screen while streaming: On / Dim / Black** next to Start and Recenter, changeable while streaming. *Black* covers the whole screen including the system bars (on an OLED screen the pixels are off) while tracking and the volume buttons keep working; a tap shows the app for 10 s.
@@ -39,5 +41,6 @@ Richard Burns Rally (RallySimFans).
 - Build: Gradle 9.8, AGP 9.4, Kotlin 2.4, Jetpack Compose; minSdk 26, targetSdk 37. Release APK shrunk with R8 (about 1.2 MB) and signed with a key kept outside the repo. Debug builds install as "CapCam debug" next to the release app.
 - Unit tests for the head math (Euler angles, all 12 mountings, yaw zeroing) and both packet formats.
 
-[Unreleased]: https://github.com/SkorczanFFF/capcam/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/SkorczanFFF/capcam/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/SkorczanFFF/capcam/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/SkorczanFFF/capcam/releases/tag/v0.1.0
