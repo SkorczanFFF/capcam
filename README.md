@@ -36,14 +36,15 @@ Any game that supports TrackIR should work the same way.
 
 - An Android phone (Android 8.0 or newer) **with a gyroscope**.
 - A Windows PC on the **same Wi-Fi / home network** as the phone.
-- [opentrack](https://github.com/opentrack/opentrack/releases) 2026.1.0 or newer (free, open source).
+- [opentrack](https://github.com/opentrack/opentrack/releases/latest) 2026.1.0 or newer (free, open source).
 - Something to fix the phone to your head: a cap with a stiff brim, a helmet or a headband.
   Velcro works. The phone must not wobble.
 
 ## 1. Install the phone app
 
-1. Download **CapCam-0.1.0.apk** on the phone: *(download link: TBD)*
-   SHA-256: `a878796b51617ccb1d08e48c509f22f73b441b97795498dbb47fda59cb298c3d`
+1. On the phone, download **[CapCam.apk](https://github.com/SkorczanFFF/capcam/releases/latest/download/CapCam.apk)**
+   (always the newest version). The [release page](https://github.com/SkorczanFFF/capcam/releases/latest)
+   lists what changed and the file's SHA-256 checksum.
 2. Open it. Android asks to allow installing apps from your browser or file manager: allow it.
    Chrome may warn that the file type can harm your device; that's shown for every APK from
    outside the Play Store.
@@ -53,8 +54,9 @@ Any game that supports TrackIR should work the same way.
 
 ## 2. Set up opentrack on the PC
 
-1. Download the opentrack portable `.7z` (or the installer) from the
-   [releases page](https://github.com/opentrack/opentrack/releases) and unpack it anywhere.
+1. From opentrack's [latest release](https://github.com/opentrack/opentrack/releases/latest) download
+   either `opentrack-…-win32-setup.exe` (installer) or `opentrack-…-win32-portable.7z` (unpack it anywhere,
+   e.g. with 7-Zip). Skip the `dbginfo` file: it's only for debugging opentrack itself.
 2. In the main window:
    - **Input:** `UDP over network`, port `4242` (settings button next to it).
    - **Output:** `freetrack 2.0 Enhanced` (leave "Enable both" on).
