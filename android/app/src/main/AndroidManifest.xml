@@ -12,7 +12,7 @@
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="true" />
 
     <application
-        android:label="CapCam"
+        android:label="${appLabel}"
         android:theme="@style/Theme.CapCam">
         <!-- Portrait only: the phone moves with your head, so the UI must not rotate mid-session. -->
         <activity

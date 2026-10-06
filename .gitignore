@@ -24,3 +24,9 @@ desktop.ini
 
 # Local planning notes (not published)
 docs/PLAN.md
+
+# Release builds and signing keys (APKs are published outside the repo)
+dist/
+*.jks
+*.keystore
+keystore.properties

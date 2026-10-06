@@ -13,6 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Phone app: the volume buttons recenter while streaming (reachable with the phone on your head), and the phone buzzes each time "forward" is captured.
 - Phone app: "Default game camera" button. While it is on, the neutral pose (straight ahead) is sent instead of the head pose, so the game shows its normal camera without disconnecting. "Resume head tracking" switches back.
 - `tools/udp-monitor.mjs`: listens on a UDP port and prints Hz, packet gap p50/p99/max, loss (CapCam format) and the latest angles every second, with a summary at the end (`--minutes N`).
+- Release build: shrunk with R8 (about 1.2 MB) and signed with a key kept outside the repo (Gradle property `capcam.signing`). Debug builds install as "CapCam debug" (`.debug` id) next to the released app.
 - Unit tests for the head math (Euler angles, all 12 mountings, yaw zeroing) and both packet formats.
 
 ### Fixed
