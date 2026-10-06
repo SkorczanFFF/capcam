@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand primary blue behind the Compose UI, so app start doesn't flash black. -->
+    <style name="Theme.CapCam" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_primary_blue</item>
+    </style>
+
+    <color name="brand_primary_blue">#001A25</color>
+</resources>
