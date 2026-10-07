@@ -70,7 +70,7 @@ class Streamer(
     private var sendErrors = 0L
     private var lastSendError: String? = null
     private var windowStartNs = 0L
-    private var windowSamples = 0
+    private var windowSent = 0
     private var paused = false
 
     fun start() {
@@ -139,13 +139,13 @@ class Streamer(
             lastSendError = "Send failed: ${e.message}"
         }
 
-        windowSamples++
+        windowSent++
         val now = SystemClock.elapsedRealtimeNanos()
         val elapsedNs = now - windowStartNs
         if (elapsedNs >= STATS_INTERVAL_NS) {
             publish(
                 StreamStats(
-                    hz = windowSamples * 1e9 / elapsedNs,
+                    hz = windowSent * 1e9 / elapsedNs,
                     sent = sent,
                     sendErrors = sendErrors,
                     angles = sample.angles,
@@ -153,7 +153,7 @@ class Streamer(
                 )
             )
             windowStartNs = now
-            windowSamples = 0
+            windowSent = 0
         }
     }
 

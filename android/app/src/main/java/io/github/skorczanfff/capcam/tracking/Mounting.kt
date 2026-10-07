@@ -43,9 +43,6 @@ data class Mounting(val facing: Facing, val topEdge: HeadDirection) {
 
     val isLandscape: Boolean get() = topEdge in facing.landscapeEdges
 
-    val label: String
-        get() = "${facing.label} · ${if (isLandscape) "landscape" else "portrait"}, top edge ${topEdge.label}"
-
     /** The same position with the phone turned 180° about its screen normal. */
     fun flipped() = Mounting(facing, topEdge.opposite)
 

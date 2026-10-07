@@ -40,8 +40,6 @@ data class Quat(val x: Double, val y: Double, val z: Double, val w: Double) {
     companion object {
         val IDENTITY = Quat(0.0, 0.0, 0.0, 1.0)
 
-        fun aboutX(rad: Double) = Quat(sin(rad / 2), 0.0, 0.0, cos(rad / 2))
-        fun aboutY(rad: Double) = Quat(0.0, sin(rad / 2), 0.0, cos(rad / 2))
         fun aboutZ(rad: Double) = Quat(0.0, 0.0, sin(rad / 2), cos(rad / 2))
 
         /** Quaternion of a proper rotation matrix `m[row][col]` (Shepperd's method). */

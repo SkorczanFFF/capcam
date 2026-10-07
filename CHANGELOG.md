@@ -8,6 +8,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Phone app: **Rate (Hz): 60 / 100 / Max** in the settings. Lower rates ask the sensor for fewer samples (saves battery) and cap the packets sent; the low-rate warning follows the chosen rate. *Max* stays the default.
 
+### Removed
+- Phone app: the high sensor sampling rate permission. Android allows up to 200 Hz without it, which is what phones deliver at *Max* anyway.
+
 ## [0.1.1] - 2026-10-07
 
 ### Added

@@ -3,18 +3,21 @@ package io.github.skorczanfff.capcam
 import android.media.AudioAttributes
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.KeyEvent
-import android.os.SystemClock
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,11 +52,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import io.github.skorczanfff.capcam.net.Ipv4
+import io.github.skorczanfff.capcam.net.LocalNetwork
 import io.github.skorczanfff.capcam.output.OutputFormat
 import io.github.skorczanfff.capcam.output.SendRate
 import io.github.skorczanfff.capcam.tracking.Facing
@@ -65,22 +74,13 @@ import io.github.skorczanfff.capcam.ui.Brand
 import io.github.skorczanfff.capcam.ui.BrandTheme
 import io.github.skorczanfff.capcam.ui.GradientButton
 import io.github.skorczanfff.capcam.ui.MountTile
-import io.github.skorczanfff.capcam.ui.describe
 import io.github.skorczanfff.capcam.ui.OutlineButton
 import io.github.skorczanfff.capcam.ui.Pill
 import io.github.skorczanfff.capcam.ui.brandChipColors
 import io.github.skorczanfff.capcam.ui.brandRadioColors
 import io.github.skorczanfff.capcam.ui.brandSwitchColors
 import io.github.skorczanfff.capcam.ui.brandTextFieldColors
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.graphics.Color
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
-import io.github.skorczanfff.capcam.net.Ipv4
-import io.github.skorczanfff.capcam.net.LocalNetwork
+import io.github.skorczanfff.capcam.ui.describe
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.abs
@@ -219,6 +219,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         val stale = running && now - lastStatsAt > 1500
+        val editable = !running
 
         Column(
             modifier = Modifier
@@ -251,7 +252,7 @@ class MainActivity : ComponentActivity() {
                 SendRate.entries.forEach { r ->
                     FilterChip(
                         selected = r == rate,
-                        enabled = !running,
+                        enabled = editable,
                         onClick = { rate = r },
                         label = { Text(r.label) },
                         colors = brandChipColors(),
@@ -328,7 +329,6 @@ class MainActivity : ComponentActivity() {
             }
 
             HorizontalDivider(color = Brand.DeepBlue)
-            val editable = !running
             if (running) Text("Stop streaming to change settings", color = Brand.Muted, style = MaterialTheme.typography.bodySmall)
 
             SectionTitle("Output")
@@ -450,19 +450,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** While streaming the volume buttons recenter instead of changing the volume. */
+    private fun isRecenterKey(keyCode: Int) =
+        running && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+
     /** Volume buttons recenter while streaming: they're reachable with the phone on your head. */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (running && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
-            if (event.repeatCount == 0) streamer?.recenter()
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
+        if (!isRecenterKey(keyCode)) return super.onKeyDown(keyCode, event)
+        if (event.repeatCount == 0) streamer?.recenter()
+        return true
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (running && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) return true
-        return super.onKeyUp(keyCode, event)
-    }
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =
+        isRecenterKey(keyCode) || super.onKeyUp(keyCode, event)
 
     /** Short buzz when "forward" is captured, so you know it worked without looking at the screen. */
     private fun buzz() {

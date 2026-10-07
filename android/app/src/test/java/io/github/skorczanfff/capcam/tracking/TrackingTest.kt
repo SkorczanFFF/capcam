@@ -2,10 +2,15 @@ package io.github.skorczanfff.capcam.tracking
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlin.math.cos
+import kotlin.math.sin
 
 class TrackingTest {
 
     private fun rad(deg: Double) = Math.toRadians(deg)
+
+    private fun Quat.Companion.aboutX(rad: Double) = Quat(sin(rad / 2), 0.0, 0.0, cos(rad / 2))
+    private fun Quat.Companion.aboutY(rad: Double) = Quat(0.0, sin(rad / 2), 0.0, cos(rad / 2))
 
     /** Head pose built in the documented order: yaw (+ = right, so −z rotation), then pitch, then roll. */
     private fun head(yaw: Double, pitch: Double, roll: Double) =
