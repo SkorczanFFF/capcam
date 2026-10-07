@@ -135,10 +135,11 @@ router's settings (*DHCP reservation* / *static lease*).
 |---|---|
 | **Start / Stop** | Starts or stops sending |
 | **Recenter** or a **volume button** | Sets "forward" to where you look now (the phone buzzes). Volume buttons work while streaming, so you can use them with the phone on your head |
+| **Rate (Hz): 60 / 100 / Max** | How many updates per second are sent (set before Start). *Max* is about 200 on most phones; *100* feels the same in games and saves some battery; *60* saves more but can feel a bit less smooth |
 | **Default game camera** | Sends "straight ahead" so the game shows its normal camera; tracking keeps running. **Resume head tracking** switches back |
 | **Screen while streaming: On / Dim / Black** | Next to the controls; can be changed while streaming. *Dim* keeps the screen at minimum brightness. *Black* makes it fully dark (on an OLED screen the pixels are off) while tracking and the volume buttons keep working; tap it to see the app for 10 s |
 
-The top panel shows the rate (aim for 100 Hz or more; a typical phone does about 200 Hz),
+The top panel shows the rate actually sent (it warns when it's clearly below what you chose),
 the angles being sent (yaw+ = right, pitch+ = up, roll+ = right ear down) and any problems.
 
 ## Game notes

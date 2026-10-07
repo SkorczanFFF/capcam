@@ -2,6 +2,7 @@ package io.github.skorczanfff.capcam
 
 import android.content.Context
 import io.github.skorczanfff.capcam.output.OutputFormat
+import io.github.skorczanfff.capcam.output.SendRate
 import io.github.skorczanfff.capcam.tracking.Mounting
 
 /** Last used target and presets, kept in SharedPreferences. */
@@ -22,6 +23,10 @@ class Settings(context: Context) {
     fun port(format: OutputFormat): Int = prefs.getInt("port.${format.label}", format.defaultPort)
 
     fun setPort(format: OutputFormat, port: Int) = prefs.edit().putInt("port.${format.label}", port).apply()
+
+    var rate: SendRate
+        get() = SendRate.entries.firstOrNull { it.name == prefs.getString("rate", null) } ?: SendRate.MAX
+        set(value) = prefs.edit().putString("rate", value.name).apply()
 
     var screenMode: ScreenMode
         get() = ScreenMode.entries.firstOrNull { it.name == prefs.getString("screen", null) }

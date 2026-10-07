@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Phone app: **Rate (Hz): 60 / 100 / Max** in the settings. Lower rates ask the sensor for fewer samples (saves battery) and cap the packets sent; the low-rate warning follows the chosen rate. *Max* stays the default.
+
 ## [0.1.1] - 2026-10-07
 
 ### Added

@@ -10,7 +10,9 @@ import android.os.Process
 import android.os.SystemClock
 import android.util.Log
 import io.github.skorczanfff.capcam.output.OutputFormat
+import io.github.skorczanfff.capcam.output.RateLimiter
 import io.github.skorczanfff.capcam.output.Sample
+import io.github.skorczanfff.capcam.output.SendRate
 import io.github.skorczanfff.capcam.tracking.HeadAngles
 import io.github.skorczanfff.capcam.tracking.HeadTracker
 import io.github.skorczanfff.capcam.tracking.Mounting
@@ -27,6 +29,7 @@ data class StreamConfig(
     val port: Int,
     val format: OutputFormat,
     val mounting: Mounting,
+    val rate: SendRate,
 )
 
 data class StreamStats(
@@ -52,6 +55,7 @@ class Streamer(
     private val appContext = context.applicationContext
     private val source = OrientationSource(appContext)
     private val tracker = HeadTracker(config.mounting)
+    private val limiter = RateLimiter(config.rate.hz)
     private val thread = HandlerThread("capcam-stream", Process.THREAD_PRIORITY_URGENT_DISPLAY)
     private val main = Handler(Looper.getMainLooper())
     private lateinit var handler: Handler
@@ -81,7 +85,7 @@ class Streamer(
                 return@post
             }
             windowStartNs = SystemClock.elapsedRealtimeNanos()
-            if (!source.start(handler, ::onSample)) {
+            if (!source.start(handler, config.rate.hz, ::onSample)) {
                 publish(StreamStats(problem = "This phone has no game rotation vector sensor"))
             }
         }
@@ -119,6 +123,8 @@ class Streamer(
         } else if (sequence < 3) {
             Log.i(TAG, "Sample $sequence: device $deviceToWorld")
         }
+        // The tracker sees every sample (settling, zeroing); only the packets are rate-limited.
+        if (!limiter.shouldSend(timestampNs)) return
         val head = if (paused) Quat.IDENTITY else tracked
         val sample = Sample(head, head.toHeadAngles(), sequence++, timestampNs)
 

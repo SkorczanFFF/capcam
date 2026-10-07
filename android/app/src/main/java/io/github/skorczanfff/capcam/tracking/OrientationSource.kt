@@ -8,8 +8,8 @@ import android.hardware.SensorManager
 import android.os.Handler
 
 /**
- * Reads TYPE_GAME_ROTATION_VECTOR (gyroscope + accelerometer, no magnetometer) at the
- * fastest rate the device allows and delivers device → world quaternions on [handler]'s thread.
+ * Reads TYPE_GAME_ROTATION_VECTOR (gyroscope + accelerometer, no magnetometer) and delivers
+ * device → world quaternions on [handler]'s thread.
  */
 class OrientationSource(context: Context) {
 
@@ -20,8 +20,11 @@ class OrientationSource(context: Context) {
 
     private var listener: SensorEventListener? = null
 
-    /** Returns false when the device has no game rotation vector sensor. */
-    fun start(handler: Handler, onSample: (deviceToWorld: Quat, timestampNs: Long) -> Unit): Boolean {
+    /**
+     * [hz] = null asks for the fastest rate. Otherwise it's a hint that saves power: Android may
+     * still deliver faster, so callers limit the rate themselves. Returns false without the sensor.
+     */
+    fun start(handler: Handler, hz: Int?, onSample: (deviceToWorld: Quat, timestampNs: Long) -> Unit): Boolean {
         val sensor = sensor ?: return false
         val wxyz = FloatArray(4)
         val l = object : SensorEventListener {
@@ -34,7 +37,8 @@ class OrientationSource(context: Context) {
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
         }
         listener = l
-        return sensorManager.registerListener(l, sensor, SensorManager.SENSOR_DELAY_FASTEST, handler)
+        val periodUs = hz?.let { 1_000_000 / it } ?: SensorManager.SENSOR_DELAY_FASTEST
+        return sensorManager.registerListener(l, sensor, periodUs, handler)
     }
 
     fun stop() {

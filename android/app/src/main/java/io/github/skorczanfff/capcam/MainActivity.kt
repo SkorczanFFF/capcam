@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.skorczanfff.capcam.output.OutputFormat
+import io.github.skorczanfff.capcam.output.SendRate
 import io.github.skorczanfff.capcam.tracking.Facing
 import io.github.skorczanfff.capcam.tracking.HeadDirection
 import io.github.skorczanfff.capcam.tracking.MountPreset
@@ -204,6 +205,7 @@ class MainActivity : ComponentActivity() {
         var format by remember { mutableStateOf(settings.format) }
         var portText by remember { mutableStateOf(settings.port(settings.format).toString()) }
         var mounting by remember { mutableStateOf(settings.mounting) }
+        var rate by remember { mutableStateOf(settings.rate) }
 
         val port = portText.toIntOrNull()?.takeIf { it in 1..65535 }
         val canStart = host.isNotBlank() && port != null
@@ -242,8 +244,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LivePanel(stale, "${format.label} → ${host.ifBlank { "?" }}:$portText")
+            LivePanel(stale, "${format.label} → ${host.ifBlank { "?" }}:$portText", expectedHz = rate.hz ?: 100)
 
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Rate (Hz)", modifier = Modifier.weight(1f))
+                SendRate.entries.forEach { r ->
+                    FilterChip(
+                        selected = r == rate,
+                        enabled = !running,
+                        onClick = { rate = r },
+                        label = { Text(r.label) },
+                        colors = brandChipColors(),
+                    )
+                }
+            }
+            Text(
+                "Max ≈ 200 on most phones. 100 feels the same in games and saves battery; 60 saves more. " +
+                    "Change it while stopped.",
+                color = Brand.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val buttonModifier = Modifier
                     .weight(1f)
@@ -259,7 +279,8 @@ class MainActivity : ComponentActivity() {
                             settings.format = format
                             settings.setPort(format, port!!)
                             settings.mounting = mounting
-                            startStreaming(StreamConfig(host, port, format, mounting))
+                            settings.rate = rate
+                            startStreaming(StreamConfig(host, port, format, mounting, rate))
                         },
                         modifier = buttonModifier,
                     )
@@ -527,7 +548,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun LivePanel(stale: Boolean, target: String) {
+    private fun LivePanel(stale: Boolean, target: String, expectedHz: Int) {
         val s = stats
         val mono = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace)
         val hz = if (running && !stale) s.hz else 0.0
@@ -547,7 +568,8 @@ class MainActivity : ComponentActivity() {
                     color = if (running) Brand.RealWhite else Brand.Muted,
                 )
                 Text(" Hz", style = mono, color = Brand.Muted, modifier = Modifier.weight(1f))
-                if (running && hz < 100) Pill("below 100 Hz", Brand.OrangeGradient)
+                // Warn when clearly below what was asked for (Max is held to 100 Hz).
+                if (running && hz < expectedHz * 0.8) Pill("below $expectedHz Hz", Brand.OrangeGradient)
             }
             AngleRow("yaw", s.angles?.yaw, mono)
             AngleRow("pitch", s.angles?.pitch, mono)
