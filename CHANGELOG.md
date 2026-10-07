@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Phone app: **Rate (Hz): 60 / 100 / Max** in the settings. Lower rates ask the sensor for fewer samples (saves battery) and cap the packets sent; the low-rate warning follows the chosen rate. *Max* stays the default.
 
+### Changed
+- README: American Truck Simulator works (tested); Euro Truck Simulator 2 shares its engine and setup. Notes on `g_trackir`, `c_ht_on` and enabling roll with `c_ht_roll`.
+- README: Assetto Corsa works (tested) with no setup; note on its `trackir.ini` rotation range.
+- README: the games table separates what's required in each game from optional tweaks, and links to each game's notes.
+
 ### Removed
 - Phone app: the high sensor sampling rate permission. Android allows up to 200 Hz without it, which is what phones deliver at *Max* anyway.
 

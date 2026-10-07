@@ -22,13 +22,16 @@ What has to be in place before you drive:
 
 ## Games
 
-| Game | Status | What to switch on |
-|---|---|---|
-| BeamNG.drive | **Works** | Nothing: TrackIR support is built in |
-| Richard Burns Rally (RallySimFans) | **Works** | RSF launcher › *Screen & Graphics* › **TrackIR head tracking** |
-| Euro Truck Simulator 2 | Should work (official TrackIR support), not tested yet | `g_trackir` in `config.cfg` |
-| Assetto Corsa | Should work, not tested yet | |
-| ACC / AC EVO / AC Rally | Not tested yet | |
+| Game | Status | Required in the game | Optional | Details |
+|---|---|---|---|---|
+| BeamNG.drive | **Works** | Nothing | – | [notes](#beamngdrive) |
+| Assetto Corsa | **Works** | Nothing | Rotation range in `trackir.ini` | [notes](#assetto-corsa) |
+| American Truck Simulator | **Works** | Nothing (`uset g_trackir "1"` in `config.cfg`, on by default) | Tilting your head (roll) in `controls.sii` | [notes](#american-truck-simulator--euro-truck-simulator-2) |
+| Richard Burns Rally (RallySimFans) | **Works** | RSF launcher › *Screen & Graphics* › tick **TrackIR head tracking** | **% TrackIR view** (look further to the sides) | [notes](#richard-burns-rally-rallysimfans) |
+| Euro Truck Simulator 2 | Should work: same engine as ATS | Same as ATS | Same as ATS | [notes](#american-truck-simulator--euro-truck-simulator-2) |
+| ACC / AC EVO / AC Rally | Not tested yet | | | |
+
+In every game, start opentrack **before** the game.
 
 Any game that supports TrackIR should work the same way.
 
@@ -150,6 +153,24 @@ TrackIR support is built in (the game's TrackIR camera filter works on top of ev
 Nothing to switch on. If the camera doesn't move, opentrack wasn't running when the game started:
 restart the game.
 
+### Assetto Corsa
+
+TrackIR support is built in and on by default (also when started from Content Manager). Range of
+rotation: `Documents\Assetto Corsa\cfg\trackir.ini`, `VALUE=100` (the file says
+`max rotation = 36000 / VALUE`). Usually you don't need to touch it: adjust sensitivity with
+opentrack's **Mapping** curves instead, in a separate opentrack profile for AC.
+
+### American Truck Simulator / Euro Truck Simulator 2
+
+Both use the same engine, so the setup is the same. Close the game before editing these files.
+
+1. In `Documents\American Truck Simulator\config.cfg` (or `Documents\Euro Truck Simulator 2\config.cfg`)
+   check that it says `uset g_trackir "1"`.
+2. Tilting your head (roll) is **off by default**. In your profile's `controls.sii`
+   (`profiles\<id>\` or `steam_profiles\<id>\` in the same folder) change
+   `constant c_ht_roll 0.000000` to `constant c_ht_roll 1.000000`.
+   `constant c_ht_on 1.000000` in the same file means head tracking is on.
+
 ### Richard Burns Rally (RallySimFans)
 
 1. Open the **RSF launcher** › **Screen & Graphics** (*Ekran i grafika*).
@@ -172,11 +193,6 @@ Pro tips:
   stages without taking your hands off the wheel.
 - If RBR feels more or less sensitive than other games, give it its own opentrack profile and adjust
   the curves under **Mapping**.
-
-### Euro Truck Simulator 2
-
-In `Documents\Euro Truck Simulator 2\config.cfg` set `uset g_trackir "1"`. Tilt (roll) is off by
-default: in your profile's `controls.sii` change `c_ht_roll 0.000000` to `c_ht_roll 1.000000`.
 
 ## Troubleshooting
 
