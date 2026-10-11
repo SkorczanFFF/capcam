@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Phone app: **Head movement** settings: turn yaw, pitch and roll on or off separately, each with a sensitivity of 0.5×–3× (at 2× a 45° head turn turns the camera 90°), and a **Side boost**: past a chosen angle (5°–45°, default 20°) the sensitivity keeps rising smoothly by up to +3× every 10°, so the centre stays calm while a small head turn still reaches far to the side. Saved, and can be changed while streaming. The live panel shows the angles after these settings.
+
 ## [0.1.2] - 2026-10-07
 
 ### Added

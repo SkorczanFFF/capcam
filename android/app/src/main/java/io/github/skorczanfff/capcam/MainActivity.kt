@@ -36,6 +36,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -65,8 +66,10 @@ import io.github.skorczanfff.capcam.net.Ipv4
 import io.github.skorczanfff.capcam.net.LocalNetwork
 import io.github.skorczanfff.capcam.output.OutputFormat
 import io.github.skorczanfff.capcam.output.SendRate
+import io.github.skorczanfff.capcam.tracking.AxisResponse
 import io.github.skorczanfff.capcam.tracking.Facing
 import io.github.skorczanfff.capcam.tracking.HeadDirection
+import io.github.skorczanfff.capcam.tracking.HeadResponse
 import io.github.skorczanfff.capcam.tracking.MountPreset
 import io.github.skorczanfff.capcam.tracking.Mounting
 import io.github.skorczanfff.capcam.tracking.OrientationSource
@@ -78,12 +81,14 @@ import io.github.skorczanfff.capcam.ui.OutlineButton
 import io.github.skorczanfff.capcam.ui.Pill
 import io.github.skorczanfff.capcam.ui.brandChipColors
 import io.github.skorczanfff.capcam.ui.brandRadioColors
+import io.github.skorczanfff.capcam.ui.brandSliderColors
 import io.github.skorczanfff.capcam.ui.brandSwitchColors
 import io.github.skorczanfff.capcam.ui.brandTextFieldColors
 import io.github.skorczanfff.capcam.ui.describe
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
 
@@ -206,6 +211,7 @@ class MainActivity : ComponentActivity() {
         var portText by remember { mutableStateOf(settings.port(settings.format).toString()) }
         var mounting by remember { mutableStateOf(settings.mounting) }
         var rate by remember { mutableStateOf(settings.rate) }
+        var response by remember { mutableStateOf(settings.response) }
 
         val port = portText.toIntOrNull()?.takeIf { it in 1..65535 }
         val canStart = host.isNotBlank() && port != null
@@ -281,7 +287,7 @@ class MainActivity : ComponentActivity() {
                             settings.setPort(format, port!!)
                             settings.mounting = mounting
                             settings.rate = rate
-                            startStreaming(StreamConfig(host, port, format, mounting, rate))
+                            startStreaming(StreamConfig(host, port, format, mounting, rate, response))
                         },
                         modifier = buttonModifier,
                     )
@@ -327,6 +333,24 @@ class MainActivity : ComponentActivity() {
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
+
+            SectionTitle("Head movement")
+            val setResponse = { r: HeadResponse ->
+                response = r
+                settings.response = r
+                streamer?.setResponse(r)
+            }
+            AxisControl("Turn left / right (yaw)", response.yaw) { setResponse(response.copy(yaw = it)) }
+            AxisControl("Look up / down (pitch)", response.pitch) { setResponse(response.copy(pitch = it)) }
+            AxisControl("Tilt (roll)", response.roll) { setResponse(response.copy(roll = it)) }
+            Text(
+                "Sensitivity multiplies your head angle: at 2× a 45° head turn turns the camera 90°. " +
+                    "Side boost keeps the centre calm and turns faster the further you look: past the " +
+                    "\"from\" angle the sensitivity rises smoothly, e.g. at 1× with +1.5× from 20° a 45° head turn " +
+                    "turns the camera about 90°. An axis that's off stays straight. All of this can be changed while streaming.",
+                color = Brand.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
 
             HorizontalDivider(color = Brand.DeepBlue)
             if (running) Text("Stop streaming to change settings", color = Brand.Muted, style = MaterialTheme.typography.bodySmall)
@@ -523,6 +547,75 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun SectionTitle(text: String) {
         Text(text, style = MaterialTheme.typography.titleSmall, color = Brand.RealWhite, fontWeight = FontWeight.SemiBold)
+    }
+
+    /** On/off switch and, while on, sensitivity and side boost sliders for one head axis. */
+    @Composable
+    private fun AxisControl(label: String, axis: AxisResponse, onChange: (AxisResponse) -> Unit) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(label, color = if (axis.enabled) Brand.White else Brand.Muted, modifier = Modifier.weight(1f))
+                if (axis.enabled) {
+                    Text(
+                        String.format(Locale.US, "%.1f×", axis.gain),
+                        color = Brand.RealWhite,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(end = 12.dp),
+                    )
+                }
+                Switch(
+                    checked = axis.enabled,
+                    onCheckedChange = { onChange(axis.copy(enabled = it)) },
+                    colors = brandSwitchColors(),
+                )
+            }
+            if (axis.enabled) {
+                Slider(
+                    value = axis.gain.toFloat(),
+                    onValueChange = { onChange(axis.withGain(it.toDouble())) },
+                    valueRange = AxisResponse.MIN_GAIN.toFloat()..AxisResponse.MAX_GAIN.toFloat(),
+                    // Values between the ends, one per 0.1×.
+                    steps = ((AxisResponse.MAX_GAIN - AxisResponse.MIN_GAIN) / AxisResponse.GAIN_STEP).roundToInt() - 1,
+                    colors = brandSliderColors(),
+                )
+                SubSlider(
+                    "Side boost",
+                    if (axis.boost > 0) String.format(Locale.US, "+%.1f× / 10°", axis.boost) else "off",
+                    axis.boost, 0.0, AxisResponse.MAX_BOOST, AxisResponse.BOOST_STEP,
+                ) { onChange(axis.withBoost(it)) }
+                if (axis.boost > 0) {
+                    SubSlider(
+                        "Boost from",
+                        String.format(Locale.US, "%.0f°", axis.boostFrom),
+                        axis.boostFrom, AxisResponse.MIN_BOOST_FROM, AxisResponse.MAX_BOOST_FROM, AxisResponse.BOOST_FROM_STEP,
+                    ) { onChange(axis.withBoostFrom(it)) }
+                }
+            }
+        }
+    }
+
+    /** A smaller labelled slider under an axis, snapping to [step]. */
+    @Composable
+    private fun SubSlider(
+        label: String,
+        valueText: String,
+        value: Double,
+        min: Double,
+        max: Double,
+        step: Double,
+        onChange: (Double) -> Unit,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = Brand.Muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            Text(valueText, color = Brand.RealWhite, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+        }
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onChange(it.toDouble()) },
+            valueRange = min.toFloat()..max.toFloat(),
+            steps = ((max - min) / step).roundToInt() - 1,
+            colors = brandSliderColors(),
+        )
     }
 
     @Composable

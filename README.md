@@ -141,6 +141,7 @@ router's settings (*DHCP reservation* / *static lease*).
 | **Rate (Hz): 60 / 100 / Max** | How many updates per second are sent (set before Start). *Max* is about 200 on most phones; *100* feels the same in games and saves some battery; *60* saves more but can feel a bit less smooth |
 | **Default game camera** | Sends "straight ahead" so the game shows its normal camera; tracking keeps running. **Resume head tracking** switches back |
 | **Screen while streaming: On / Dim / Black** | Next to the controls; can be changed while streaming. *Dim* keeps the screen at minimum brightness. *Black* makes it fully dark (on an OLED screen the pixels are off) while tracking and the volume buttons keep working; tap it to see the app for 10 s |
+| **Head movement** | Turns yaw, pitch and roll on or off separately and sets each one's sensitivity (0.5×–3×; at 2× a 45° head turn turns the camera 90°). **Side boost** keeps the centre calm and turns faster the further you look: past the *Boost from* angle (default 20°) the sensitivity rises smoothly by the boost every 10°, e.g. at 1× with +1.5× from 20° a 45° head turn turns the camera about 90°. Handy when you can't turn your head far without losing sight of the screen. Can be changed while streaming. Works with both output formats; with opentrack it comes before opentrack's **Mapping** curves |
 
 The top panel shows the rate actually sent (it warns when it's clearly below what you chose),
 the angles being sent (yaw+ = right, pitch+ = up, roll+ = right ear down) and any problems.
@@ -243,6 +244,6 @@ Signs match opentrack: yaw+ = turn right, pitch+ = look up, roll+ = right ear do
 | 6 | u16 | reserved |
 | 8 | u32 | sequence number |
 | 12 | u64 | sensor timestamp, ns |
-| 20 | f32 × 4 | head → world quaternion x, y, z, w (mounting applied, yaw zeroed) |
+| 20 | f32 × 4 | head → world quaternion x, y, z, w (mounting applied, yaw zeroed, head movement settings applied) |
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed.

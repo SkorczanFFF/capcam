@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
@@ -150,6 +151,16 @@ fun brandSwitchColors() = SwitchDefaults.colors(
     uncheckedThumbColor = Brand.Muted,
     uncheckedTrackColor = Brand.DeepBlue,
     uncheckedBorderColor = Brand.Muted,
+)
+
+/** No tick marks: with fine steps they'd crowd the track. */
+@Composable
+fun brandSliderColors() = SliderDefaults.colors(
+    thumbColor = Brand.RealWhite,
+    activeTrackColor = Brand.Raspberry,
+    inactiveTrackColor = Brand.Track,
+    activeTickColor = Color.Transparent,
+    inactiveTickColor = Color.Transparent,
 )
 
 @Composable

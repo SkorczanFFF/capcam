@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import io.github.skorczanfff.capcam.output.OutputFormat
 import io.github.skorczanfff.capcam.output.SendRate
+import io.github.skorczanfff.capcam.tracking.AxisResponse
+import io.github.skorczanfff.capcam.tracking.HeadResponse
 import io.github.skorczanfff.capcam.tracking.Mounting
 
 /** Last used target and presets, kept in SharedPreferences. */
@@ -45,6 +47,26 @@ class Settings(context: Context) {
             putString("mount.facing", value.facing.name)
             putString("mount.topEdge", value.topEdge.name)
         }
+
+    var response: HeadResponse
+        get() = HeadResponse(axis("yaw"), axis("pitch"), axis("roll"))
+        set(value) = prefs.edit {
+            putAxis("yaw", value.yaw)
+            putAxis("pitch", value.pitch)
+            putAxis("roll", value.roll)
+        }
+
+    private fun axis(name: String) = AxisResponse(prefs.getBoolean("axis.$name.on", true))
+        .withGain(prefs.getFloat("axis.$name.gain", 1f).toDouble())
+        .withBoost(prefs.getFloat("axis.$name.boost", 0f).toDouble())
+        .withBoostFrom(prefs.getFloat("axis.$name.boostFrom", AxisResponse.DEFAULT_BOOST_FROM.toFloat()).toDouble())
+
+    private fun SharedPreferences.Editor.putAxis(name: String, axis: AxisResponse) {
+        putBoolean("axis.$name.on", axis.enabled)
+        putFloat("axis.$name.gain", axis.gain.toFloat())
+        putFloat("axis.$name.boost", axis.boost.toFloat())
+        putFloat("axis.$name.boostFrom", axis.boostFrom.toFloat())
+    }
 }
 
 /** The enum constant stored under [key] by name, or null when missing or unknown. */

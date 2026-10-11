@@ -14,6 +14,7 @@ import io.github.skorczanfff.capcam.output.RateLimiter
 import io.github.skorczanfff.capcam.output.Sample
 import io.github.skorczanfff.capcam.output.SendRate
 import io.github.skorczanfff.capcam.tracking.HeadAngles
+import io.github.skorczanfff.capcam.tracking.HeadResponse
 import io.github.skorczanfff.capcam.tracking.HeadTracker
 import io.github.skorczanfff.capcam.tracking.Mounting
 import io.github.skorczanfff.capcam.tracking.OrientationSource
@@ -30,6 +31,7 @@ data class StreamConfig(
     val format: OutputFormat,
     val mounting: Mounting,
     val rate: SendRate,
+    val response: HeadResponse,
 )
 
 data class StreamStats(
@@ -72,6 +74,7 @@ class Streamer(
     private var windowStartNs = 0L
     private var windowSent = 0
     private var paused = false
+    private var response = config.response
 
     fun start() {
         acquireWifiLock()
@@ -103,6 +106,11 @@ class Streamer(
         handler.post { paused = value }
     }
 
+    /** Axis on/off, sensitivity and side boost; takes effect on the next packet. */
+    fun setResponse(value: HeadResponse) {
+        handler.post { response = value }
+    }
+
     fun stop() {
         handler.post {
             source.stop()
@@ -125,7 +133,7 @@ class Streamer(
         }
         // The tracker sees every sample (settling, zeroing); only the packets are rate-limited.
         if (!limiter.shouldSend(timestampNs)) return
-        val head = if (paused) Quat.IDENTITY else tracked
+        val head = if (paused) Quat.IDENTITY else response.apply(tracked)
         val sample = Sample(head, head.toHeadAngles(), sequence++, timestampNs)
 
         buffer.clear()

@@ -2,15 +2,10 @@ package io.github.skorczanfff.capcam.tracking
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import kotlin.math.cos
-import kotlin.math.sin
 
 class TrackingTest {
 
     private fun rad(deg: Double) = Math.toRadians(deg)
-
-    private fun Quat.Companion.aboutX(rad: Double) = Quat(sin(rad / 2), 0.0, 0.0, cos(rad / 2))
-    private fun Quat.Companion.aboutY(rad: Double) = Quat(0.0, sin(rad / 2), 0.0, cos(rad / 2))
 
     /** Head pose built in the documented order: yaw (+ = right, so −z rotation), then pitch, then roll. */
     private fun head(yaw: Double, pitch: Double, roll: Double) =
@@ -184,5 +179,77 @@ class TrackingTest {
         // Recenter zeroes on the next sample straight away (the sensor has settled by then).
         tracker.recenter()
         assertAngles(HeadAngles(0.0, 5.0, 0.0), tracker.process(deviceFor(head(20.0, 5.0, 0.0), m), 700 * ms).toHeadAngles())
+    }
+
+    @Test
+    fun fromHeadAnglesInvertsToHeadAngles() {
+        val a = HeadAngles(-120.0, -35.0, 25.0)
+        assertAngles(head(a.yaw, a.pitch, a.roll).toHeadAngles(), Quat.fromHeadAngles(a).toHeadAngles())
+        assertAngles(a, Quat.fromHeadAngles(a).toHeadAngles())
+    }
+
+    @Test
+    fun naturalResponsePassesThePoseThrough() {
+        val pose = head(25.0, -10.0, 5.0)
+        assertEquals(pose, HeadResponse.NATURAL.apply(pose))
+    }
+
+    @Test
+    fun responseTurnsAxesOffAndScalesThem() {
+        val pose = head(30.0, -10.0, 8.0)
+        val yawOnly = HeadResponse(pitch = AxisResponse(enabled = false), roll = AxisResponse(enabled = false))
+        assertAngles(HeadAngles(30.0, 0.0, 0.0), yawOnly.apply(pose).toHeadAngles())
+
+        val noYaw = HeadResponse(yaw = AxisResponse(enabled = false))
+        assertAngles(HeadAngles(0.0, -10.0, 8.0), noYaw.apply(pose).toHeadAngles())
+
+        val faster = HeadResponse(yaw = AxisResponse(gain = 2.0), pitch = AxisResponse(gain = 1.5))
+        assertAngles(HeadAngles(60.0, -15.0, 8.0), faster.apply(pose).toHeadAngles())
+    }
+
+    @Test
+    fun scaledAnglesStopAtTheLimits() {
+        val r = HeadResponse(yaw = AxisResponse(gain = 3.0), pitch = AxisResponse(gain = 3.0))
+        // −180° and +180° are the same direction.
+        assertEquals(180.0, kotlin.math.abs(r.apply(head(-100.0, 0.0, 0.0)).toHeadAngles().yaw), 1e-6)
+        assertEquals(90.0, r.apply(head(0.0, 40.0, 0.0)).toHeadAngles().pitch, 1e-6)
+    }
+
+    @Test
+    fun sideBoostLeavesTheCentreAndGrowsPastIt() {
+        val axis = AxisResponse(gain = 1.0, boost = 1.5, boostFrom = 20.0)
+        assertEquals(15.0, axis.apply(15.0), 1e-9)
+        assertEquals(20.0, axis.apply(20.0), 1e-9)
+        // 45 + 1.5 · 25² / 20
+        assertEquals(91.875, axis.apply(45.0), 1e-9)
+        assertEquals(-91.875, axis.apply(-45.0), 1e-9)
+        // No kink at the start: just past it the slope is still the plain gain.
+        assertEquals(1.0, (axis.apply(20.001) - axis.apply(20.0)) / 0.001, 1e-3)
+        // Past the start the slope rises by the boost every 10°: 1 + 1.5 at 30°.
+        assertEquals(2.5, (axis.apply(30.001) - axis.apply(29.999)) / 0.002, 1e-3)
+        assertEquals(0.0, axis.copy(enabled = false).apply(45.0), 1e-9)
+    }
+
+    @Test
+    fun sideBoostReachesTheGame() {
+        val r = HeadResponse(yaw = AxisResponse(boost = 1.5))
+        assertAngles(HeadAngles(91.875, -10.0, 0.0), r.apply(head(45.0, -10.0, 0.0)).toHeadAngles())
+    }
+
+    @Test
+    fun boostSettingsAreKeptInRangeAndRounded() {
+        assertEquals(1.3, AxisResponse().withBoost(1.2999999).boost, 1e-9)
+        assertEquals(0.0, AxisResponse().withBoost(-1.0).boost, 1e-9)
+        assertEquals(AxisResponse.MAX_BOOST, AxisResponse().withBoost(9.0).boost, 1e-9)
+        assertEquals(25.0, AxisResponse().withBoostFrom(23.0).boostFrom, 1e-9)
+        assertEquals(AxisResponse.MIN_BOOST_FROM, AxisResponse().withBoostFrom(0.0).boostFrom, 1e-9)
+        assertEquals(AxisResponse.MAX_BOOST_FROM, AxisResponse().withBoostFrom(90.0).boostFrom, 1e-9)
+    }
+
+    @Test
+    fun gainIsKeptInRangeAndRounded() {
+        assertEquals(1.3, AxisResponse().withGain(1.2999999).gain, 1e-9)
+        assertEquals(AxisResponse.MAX_GAIN, AxisResponse().withGain(9.0).gain, 1e-9)
+        assertEquals(AxisResponse.MIN_GAIN, AxisResponse().withGain(0.0).gain, 1e-9)
     }
 }
