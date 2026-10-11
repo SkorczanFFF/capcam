@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-11
+
 ### Added
 - Phone app: **Head movement** settings: turn yaw, pitch and roll on or off separately, each with a sensitivity of 0.5×–3× (at 2× a 45° head turn turns the camera 90°), and a **Side boost**: past a chosen angle (5°–45°, default 20°) the sensitivity keeps rising smoothly by up to +3× every 10°, so the centre stays calm while a small head turn still reaches far to the side. Saved, and can be changed while streaming. The live panel shows the angles after these settings.
 
@@ -57,7 +59,8 @@ Richard Burns Rally (RallySimFans).
 - Build: Gradle 9.8, AGP 9.4, Kotlin 2.4, Jetpack Compose; minSdk 26, targetSdk 37. Release APK shrunk with R8 (about 1.2 MB) and signed with a key kept outside the repo. Debug builds install as "CapCam debug" next to the release app.
 - Unit tests for the head math (Euler angles, all 12 mountings, yaw zeroing) and both packet formats.
 
-[Unreleased]: https://github.com/SkorczanFFF/capcam/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/SkorczanFFF/capcam/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/SkorczanFFF/capcam/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/SkorczanFFF/capcam/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/SkorczanFFF/capcam/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/SkorczanFFF/capcam/releases/tag/v0.1.0
