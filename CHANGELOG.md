@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- README: Euro Truck Simulator 2 works (tested).
+- README: Assetto Corsa Rally works through the community head tracking mod (opentrack *UDP over network* output, phone on another port).
+- README: openOMSI, the from-scratch OMSI 2 recreation, works: head tracking is switched on in *Options › Camera*.
+- README: the easiest way to calibrate is to Stop and Start opentrack while looking at the monitor.
+
 ## [0.1.3] - 2026-10-11
 
 ### Added

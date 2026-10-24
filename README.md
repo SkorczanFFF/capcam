@@ -26,12 +26,14 @@ What has to be in place before you drive:
 |---|---|---|---|---|
 | BeamNG.drive | **Works** | Nothing | – | [notes](#beamngdrive) |
 | Assetto Corsa | **Works** | Nothing | Rotation range in `trackir.ini` | [notes](#assetto-corsa) |
+| Assetto Corsa Rally | **Works** | Community head tracking mod; opentrack output *UDP over network* | – | [notes](#assetto-corsa-rally) |
 | American Truck Simulator | **Works** | Nothing (`uset g_trackir "1"` in `config.cfg`, on by default) | Tilting your head (roll) in `controls.sii` | [notes](#american-truck-simulator--euro-truck-simulator-2) |
+| Euro Truck Simulator 2 | **Works** | Same as ATS | Same as ATS | [notes](#american-truck-simulator--euro-truck-simulator-2) |
 | Richard Burns Rally (RallySimFans) | **Works** | RSF launcher › *Screen & Graphics* › tick **TrackIR head tracking** | **% TrackIR view** (look further to the sides) | [notes](#richard-burns-rally-rallysimfans) |
-| Euro Truck Simulator 2 | Should work: same engine as ATS | Same as ATS | Same as ATS | [notes](#american-truck-simulator--euro-truck-simulator-2) |
-| ACC / AC EVO / AC Rally | Not tested yet | | | |
+| openOMSI (OMSI 2 recreation) | **Works** | *Options › Camera* › **Head tracking** on | – | [notes](#openomsi-omsi-2) |
+| ACC / AC EVO | Not tested yet | | | |
 
-In every game, start opentrack **before** the game.
+In every game with built-in TrackIR support, start opentrack **before** the game.
 
 Any game that supports TrackIR should work the same way.
 
@@ -105,6 +107,10 @@ cap shows up as camera shake.
 4. While driving, look straight ahead and press your **Center** shortcut whenever the view drifts
    (the phone's gyroscope drifts slowly in yaw; that's normal).
 
+**Easiest way to calibrate:** once the phone is streaming, look straight at the monitor and
+press **Stop** and then **Start** in opentrack. opentrack takes the pose it gets when it starts as
+"straight ahead", so this resets the centre without touching the phone.
+
 **One place sets "forward".** For games through opentrack, centre with opentrack's Center
 shortcut. Recentering on the phone *after* opentrack has started adds to opentrack's centre and
 can leave the camera looking sideways.
@@ -161,6 +167,38 @@ rotation: `Documents\Assetto Corsa\cfg\trackir.ini`, `VALUE=100` (the file says
 `max rotation = 36000 / VALUE`). Usually you don't need to touch it: adjust sensitivity with
 opentrack's **Mapping** curves instead, in a separate opentrack profile for AC.
 
+### Assetto Corsa Rally
+
+The game has no TrackIR support of its own. Head tracking comes from the community mod
+[assetto-corsa-rally-headtracking](https://github.com/itsloopyo/assetto-corsa-rally-headtracking),
+which reads opentrack's *UDP over network* output instead of the TrackIR protocol.
+
+1. Install the mod: download the installer ZIP from its
+   [releases](https://github.com/itsloopyo/assetto-corsa-rally-headtracking/releases), unpack it and run
+   `install.cmd` (it copies the files next to `acr.exe`). Its settings are in `CameraUnlock.ini` in the
+   same folder.
+2. The mod listens on port `4242`, the same port opentrack uses for the phone. Give the phone another
+   port, in a separate opentrack profile for ACR:
+   - phone: port `5252`,
+   - opentrack **Input** `UDP over network`, port `5252` (hammer button),
+   - opentrack **Output** `UDP over network`, address `127.0.0.1`, port `4242`.
+3. Start opentrack and the game in any order: the mod doesn't need opentrack at startup.
+
+Head tracking works in the on-car cameras. The mod has no centre key of its own: centre with
+opentrack's **Center** shortcut. `End` turns tracking on and off.
+
+### openOMSI (OMSI 2)
+
+[openOMSI](https://github.com/openOMSI-org/openOMSI) is an independent, open-source recreation of
+the bus simulator OMSI 2, written from scratch in Rust. It isn't a patch or a port of the original
+code: it is a new 64-bit engine that plays the maps, buses and mods of an installed OMSI 2 (it has
+no game content of its own and won't start without OMSI 2). The original OMSI 2 is a 32-bit
+program that often runs out of memory and crashes on big maps; openOMSI doesn't have that limit.
+It's in early development.
+
+Turn on **Head tracking** in *Options › Camera* (leave *Head tracking with* on *Automatic*). Head
+tracking works in the driver's view.
+
 ### American Truck Simulator / Euro Truck Simulator 2
 
 Both use the same engine, so the setup is the same. Close the game before editing these files.
@@ -201,7 +239,7 @@ Pro tips:
 |---|---|
 | Rate shows 0 Hz / "No sensor data" | Stop and Start again; check the phone has a gyroscope (bottom of the app) |
 | Phone sends, opentrack's preview doesn't move | Same network? **Turn off VPNs** on both phone and PC. Allow opentrack in Windows Firewall (private network) |
-| Camera looks sideways or backwards | Look straight ahead and press opentrack's Center. If it persists: Stop opentrack, Start the phone, then Start opentrack |
+| Camera looks sideways or backwards | Look straight ahead and press opentrack's Center, or Stop and Start opentrack. If it persists: Stop opentrack, Start the phone, then Start opentrack |
 | Turning left turns the camera right | Wrong tile or 180° switch in the app. Last resort: opentrack *Options › Output › Invert* for that axis |
 | Camera doesn't move in the game | The game's TrackIR option is off, or opentrack was started after the game: start opentrack first, then the game |
 | Jerky camera | Use 5 GHz Wi-Fi and keep the phone near the router; a stronger filter in opentrack helps |
